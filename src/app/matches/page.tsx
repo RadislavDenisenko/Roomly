@@ -54,9 +54,14 @@ export default function MatchesPage() {
           <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
-        <Link href="/discover" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          Discover
-        </Link>
+        <nav className="flex items-center gap-4 text-sm font-medium">
+          <Link href="/apartments" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            Apartments
+          </Link>
+          <Link href="/discover" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            Discover
+          </Link>
+        </nav>
       </header>
 
       <div className="mx-auto w-full max-w-md flex-1 px-6 pb-16">

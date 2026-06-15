@@ -173,9 +173,14 @@ export default function DiscoverPage() {
           <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
-        <Link href="/matches" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          Matches
-        </Link>
+        <nav className="flex items-center gap-4 text-sm font-medium">
+          <Link href="/apartments" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            Apartments
+          </Link>
+          <Link href="/matches" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            Matches
+          </Link>
+        </nav>
       </header>
 
       <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col items-center px-6 pb-16">

@@ -115,3 +115,90 @@ create policy "Message your matches" on public.messages
     and exists (select 1 from public.likes where liker_id = auth.uid() and liked_id = recipient_id)
     and exists (select 1 from public.likes where liker_id = recipient_id and liked_id = auth.uid())
   );
+
+-- Apartment listings -------------------------------------------------------
+-- In-app listings posted by owners/landlords (verified by Roomly, not scraped
+-- from third parties). owner-posted listings start unverified.
+create table if not exists public.listings (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users on delete cascade,
+  created_at timestamptz default now(),
+  title text not null,
+  description text,
+  city text,
+  neighborhood text,
+  rent int,
+  bedrooms int,
+  bathrooms int,
+  available_from date,
+  photos text[] default '{}',
+  verified boolean default false
+);
+
+alter table public.listings enable row level security;
+
+drop policy if exists "Authenticated users can view listings" on public.listings;
+create policy "Authenticated users can view listings"
+  on public.listings for select using (auth.role() = 'authenticated');
+
+drop policy if exists "Owners can post listings" on public.listings;
+create policy "Owners can post listings"
+  on public.listings for insert with check (auth.uid() = owner_id);
+
+drop policy if exists "Owners can edit their listings" on public.listings;
+create policy "Owners can edit their listings"
+  on public.listings for update using (auth.uid() = owner_id);
+
+drop policy if exists "Owners can delete their listings" on public.listings;
+create policy "Owners can delete their listings"
+  on public.listings for delete using (auth.uid() = owner_id);
+
+-- Saved / bookmarked listings
+create table if not exists public.saved_listings (
+  user_id    uuid not null references auth.users on delete cascade,
+  listing_id uuid not null references public.listings on delete cascade,
+  created_at timestamptz default now(),
+  primary key (user_id, listing_id)
+);
+
+alter table public.saved_listings enable row level security;
+
+drop policy if exists "See own saved listings" on public.saved_listings;
+create policy "See own saved listings" on public.saved_listings
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "Save listings as yourself" on public.saved_listings;
+create policy "Save listings as yourself" on public.saved_listings
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Unsave own listings" on public.saved_listings;
+create policy "Unsave own listings" on public.saved_listings
+  for delete using (auth.uid() = user_id);
+
+-- Demo listings (idempotent: each only inserts once, by title) --------------
+insert into public.listings (owner_id, title, description, city, neighborhood, rent, bedrooms, bathrooms, available_from, photos, verified)
+select u.id, 'Sunny 2BR near campus',
+  'Bright corner unit with big windows, dishwasher, and a small balcony. Walkable to campus, coffee, and the green belt.',
+  'Austin, TX', 'Hyde Park', 1450, 2, 1, date '2026-08-01',
+  array['https://picsum.photos/seed/roomly-listing-1a/800/1000','https://picsum.photos/seed/roomly-listing-1b/800/1000','https://picsum.photos/seed/roomly-listing-1c/800/1000'], true
+from auth.users u
+where u.email = 'sample.maya@roomly.test'
+  and not exists (select 1 from public.listings where title = 'Sunny 2BR near campus');
+
+insert into public.listings (owner_id, title, description, city, neighborhood, rent, bedrooms, bathrooms, available_from, photos, verified)
+select u.id, 'Modern loft downtown',
+  'Open-plan loft with exposed brick, in-unit laundry, and a rooftop pool. Steps from restaurants and transit.',
+  'Austin, TX', 'Downtown', 1900, 1, 1, date '2026-07-15',
+  array['https://picsum.photos/seed/roomly-listing-2a/800/1000','https://picsum.photos/seed/roomly-listing-2b/800/1000'], true
+from auth.users u
+where u.email = 'sample.diego@roomly.test'
+  and not exists (select 1 from public.listings where title = 'Modern loft downtown');
+
+insert into public.listings (owner_id, title, description, city, neighborhood, rent, bedrooms, bathrooms, available_from, photos, verified)
+select u.id, 'Cozy room in shared house',
+  'Furnished private room in a friendly 3-person house. Big backyard, fast wifi, and a cat named Biscuit.',
+  'Austin, TX', 'East Side', 850, 1, 1, date '2026-09-01',
+  array['https://picsum.photos/seed/roomly-listing-3a/800/1000','https://picsum.photos/seed/roomly-listing-3b/800/1000'], false
+from auth.users u
+where u.email = 'sample.riley@roomly.test'
+  and not exists (select 1 from public.listings where title = 'Cozy room in shared house');
