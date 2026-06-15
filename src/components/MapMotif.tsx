@@ -25,73 +25,7 @@
 
 import type { CSSProperties } from "react";
 
-/* -------------------------------------------------------------------------- */
-/*  One-time style injection                                                  */
-/* -------------------------------------------------------------------------- */
-
-const MM_STYLE_ID = "mm-motif-styles";
-
-const MM_CSS = `
-.mm-trail-draw {
-  stroke-dasharray: var(--mm-len, 2000);
-  stroke-dashoffset: var(--mm-len, 2000);
-  animation: mm-draw 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-.mm-trail-march {
-  animation: mm-march 18s linear infinite;
-}
-.mm-pin-bob {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: mm-bob 2.6s ease-in-out infinite;
-}
-.mm-pin-ring {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: mm-pulse 2.6s ease-out infinite;
-}
-
-@keyframes mm-draw {
-  to { stroke-dashoffset: 0; }
-}
-@keyframes mm-march {
-  to { stroke-dashoffset: -100; }
-}
-@keyframes mm-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
-}
-@keyframes mm-pulse {
-  0%   { transform: scale(0.7); opacity: 0.55; }
-  70%  { transform: scale(1.9); opacity: 0; }
-  100% { transform: scale(1.9); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mm-trail-draw {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-  .mm-trail-march,
-  .mm-pin-bob,
-  .mm-pin-ring {
-    animation: none;
-  }
-}
-`;
-
-/**
- * Renders the shared stylesheet exactly once per document. On the server every
- * instance emits the <style>; in the browser we mark the document so repeated
- * mounts don't duplicate it. React de-dupes identical adjacent <style> nodes by
- * id well enough that this stays harmless if it ever slips through.
- */
-function MotifStyles() {
-  if (typeof document !== "undefined") {
-    if (document.getElementById(MM_STYLE_ID)) return null;
-  }
-  return <style id={MM_STYLE_ID} dangerouslySetInnerHTML={{ __html: MM_CSS }} />;
-}
+/* Animations + keyframes for these components live in globals.css (mm-* rules). */
 
 /* -------------------------------------------------------------------------- */
 /*  DottedTrail                                                               */
@@ -127,39 +61,30 @@ export function DottedTrail({
   const d = TRAIL_PATHS[variant];
 
   return (
-    <>
-      <MotifStyles />
-      <svg
-        className={className}
-        width="100%"
-        height={height}
-        viewBox="0 0 1000 100"
-        preserveAspectRatio="none"
-        fill="none"
-        aria-hidden="true"
-        focusable="false"
-        style={{ display: "block", overflow: "visible" }}
-      >
-        {/* Faint base path so the route reads even before/under the dashes. */}
-        <path
-          d={d}
-          stroke={color}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeOpacity={0.14}
-        />
-        {/* Marching dashes that also "draw in" on mount. */}
-        <path
-          className="mm-trail-draw mm-trail-march"
-          d={d}
-          stroke={color}
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeDasharray="2 18"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-    </>
+    <svg
+      className={className}
+      width="100%"
+      height={height}
+      viewBox="0 0 1000 100"
+      preserveAspectRatio="none"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: "block", overflow: "visible" }}
+    >
+      {/* Faint base path so the route reads even under the dashes. */}
+      <path d={d} stroke={color} strokeWidth={2} strokeLinecap="round" strokeOpacity={0.14} />
+      {/* Marching dotted route. */}
+      <path
+        className="mm-trail"
+        d={d}
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeDasharray="2 18"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
 
@@ -183,7 +108,6 @@ export function RoutePin({ label, color = "#7c3aed", size = 28 }: RoutePinProps)
     <span
       style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
     >
-      <MotifStyles />
       <svg
         width={size}
         height={size}

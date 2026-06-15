@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { mainPhoto } from "@/lib/photos";
+import { TrailDivider } from "@/components/MapMotif";
 import {
   type Listing,
   listingPhotos,
@@ -189,8 +190,10 @@ export default function ListingDetailPage() {
           </section>
         )}
 
+        <TrailDivider variant="wave" height={48} className="mt-6 opacity-70" />
+
         {owner && (
-          <section className="mt-6 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
+          <section className="mt-2 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mainPhoto(owner)} alt={owner.full_name ?? "Owner"} className="h-11 w-11 rounded-full object-cover" />
             <div className="min-w-0">

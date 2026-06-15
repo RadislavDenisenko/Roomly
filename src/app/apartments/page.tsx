@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { DottedTrail } from "@/components/MapMotif";
 import {
   type Listing,
   listingMainPhoto,
@@ -134,6 +135,8 @@ export default function ApartmentsPage() {
           </Link>
         </nav>
       </header>
+
+      <DottedTrail height={40} className="opacity-70" />
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Apartments</h1>

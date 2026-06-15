@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { mainPhoto } from "@/lib/photos";
+import { DottedTrail } from "@/components/MapMotif";
 import {
   type Listing,
   listingMainPhoto,
@@ -149,6 +150,8 @@ export default function TogetherPage() {
         </Link>
         <span className="roomly-mark h-8 w-8 text-sm">R</span>
       </header>
+
+      <DottedTrail variant="zigzag" height={40} className="opacity-70" />
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Search together</h1>

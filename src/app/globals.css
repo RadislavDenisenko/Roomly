@@ -130,3 +130,18 @@ body {
   .roomly-btn { transition: none !important; }
   .roomly-btn:hover, .roomly-btn:active { transform: none !important; }
 }
+
+/* ---- MapMotif: dotted treasure-trail connectors + map pins ---- */
+@keyframes mm-march { to { stroke-dashoffset: -200; } }
+@keyframes mm-fade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mm-bob   { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes mm-pulse { 0% { transform: scale(0.7); opacity: 0.55; } 70% { transform: scale(1.9); opacity: 0; } 100% { transform: scale(1.9); opacity: 0; } }
+
+/* Dots march along the route (dash pattern stays "2 18" from the element). */
+.mm-trail    { animation: mm-march 6s linear infinite, mm-fade 0.8s ease-out both; }
+.mm-pin-bob  { transform-box: fill-box; transform-origin: center bottom; animation: mm-bob 2.6s ease-in-out infinite; }
+.mm-pin-ring { transform-box: fill-box; transform-origin: center; animation: mm-pulse 2.6s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-trail, .mm-pin-bob, .mm-pin-ring { animation: none !important; }
+}
