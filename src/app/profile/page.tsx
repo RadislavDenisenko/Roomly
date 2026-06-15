@@ -18,6 +18,10 @@ type Form = {
   smoking: boolean;
   pets: boolean;
   guests: string;
+  avatar_url: string;
+  db_nonsmokers_only: boolean;
+  db_no_pet_owners: boolean;
+  db_budget_overlap_only: boolean;
 };
 
 const EMPTY: Form = {
@@ -33,6 +37,10 @@ const EMPTY: Form = {
   smoking: false,
   pets: false,
   guests: "sometimes",
+  avatar_url: "",
+  db_nonsmokers_only: false,
+  db_no_pet_owners: false,
+  db_budget_overlap_only: false,
 };
 
 export default function ProfilePage() {
@@ -43,6 +51,7 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -77,6 +86,10 @@ export default function ProfilePage() {
           smoking: profile.smoking ?? false,
           pets: profile.pets ?? false,
           guests: profile.guests ?? "sometimes",
+          avatar_url: profile.avatar_url ?? "",
+          db_nonsmokers_only: profile.db_nonsmokers_only ?? false,
+          db_no_pet_owners: profile.db_no_pet_owners ?? false,
+          db_budget_overlap_only: profile.db_budget_overlap_only ?? false,
         });
       }
       setLoading(false);
@@ -86,6 +99,32 @@ export default function ProfilePage() {
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
+  }
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      setUploading(false);
+      return;
+    }
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${userData.user.id}/avatar.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+    if (upErr) {
+      setError("Photo upload failed — is the 'avatars' storage bucket set up? " + upErr.message);
+      setUploading(false);
+      return;
+    }
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    update("avatar_url", `${pub.publicUrl}?t=${Date.now()}`);
+    setUploading(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -114,6 +153,10 @@ export default function ProfilePage() {
       smoking: form.smoking,
       pets: form.pets,
       guests: form.guests,
+      avatar_url: form.avatar_url || null,
+      db_nonsmokers_only: form.db_nonsmokers_only,
+      db_no_pet_owners: form.db_no_pet_owners,
+      db_budget_overlap_only: form.db_budget_overlap_only,
     });
     setSaving(false);
     if (error) setError(error.message);
@@ -185,6 +228,27 @@ export default function ProfilePage() {
           </div>
         )}
 
+        <Card title="Photo">
+          <div className="flex items-center gap-4">
+            {form.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={form.avatar_url}
+                alt="Your photo"
+                className="h-20 w-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-3xl font-bold text-white">
+                {(form.full_name || "?").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <label className="inline-flex h-10 cursor-pointer items-center rounded-full border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">
+              {uploading ? "Uploading…" : form.avatar_url ? "Change photo" : "Upload photo"}
+              <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+            </label>
+          </div>
+        </Card>
+
         <Card title="About you">
           <Text label="Full name" value={form.full_name} onChange={(v) => update("full_name", v)} placeholder="Alex Rivera" />
           <div className="grid grid-cols-2 gap-4">
@@ -250,6 +314,17 @@ export default function ProfilePage() {
           <div className="flex gap-6">
             <Toggle label="I smoke" checked={form.smoking} onChange={(v) => update("smoking", v)} />
             <Toggle label="I have pets" checked={form.pets} onChange={(v) => update("pets", v)} />
+          </div>
+        </Card>
+
+        <Card title="Dealbreakers (hard filters)">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Turn these on to completely hide anyone who does not meet them in Discover.
+          </p>
+          <div className="space-y-3">
+            <Toggle label="Only show non-smokers" checked={form.db_nonsmokers_only} onChange={(v) => update("db_nonsmokers_only", v)} />
+            <Toggle label="Hide people who have pets" checked={form.db_no_pet_owners} onChange={(v) => update("db_no_pet_owners", v)} />
+            <Toggle label="Only budgets that overlap mine" checked={form.db_budget_overlap_only} onChange={(v) => update("db_budget_overlap_only", v)} />
           </div>
         </Card>
 
