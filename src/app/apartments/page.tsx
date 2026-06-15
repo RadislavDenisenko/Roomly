@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
@@ -11,6 +11,7 @@ import {
   formatRent,
   bedBath,
   isMissingTable,
+  DEMO_LISTINGS,
 } from "@/lib/listings";
 
 export default function ApartmentsPage() {
@@ -19,8 +20,16 @@ export default function ApartmentsPage() {
   const [authed, setAuthed] = useState(false);
   const [listings, setListings] = useState<Listing[]>([]);
   const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [demo, setDemo] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
+
+  // filters
+  const [query, setQuery] = useState("");
+  const [maxRent, setMaxRent] = useState(3000);
+  const [minBeds, setMinBeds] = useState(0);
+  const [minBaths, setMinBaths] = useState(0);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [sort, setSort] = useState<"new" | "price-asc" | "price-desc">("new");
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -39,7 +48,10 @@ export default function ApartmentsPage() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) {
-        if (isMissingTable(error)) setNeedsSetup(true);
+        if (isMissingTable(error)) {
+          setListings(DEMO_LISTINGS);
+          setDemo(true);
+        }
         setLoading(false);
         return;
       }
@@ -55,8 +67,6 @@ export default function ApartmentsPage() {
   }, []);
 
   async function toggleSave(id: string) {
-    if (!myId) return;
-    const supabase = createClient();
     const isSaved = saved.has(id);
     setSaved((s) => {
       const next = new Set(s);
@@ -64,11 +74,48 @@ export default function ApartmentsPage() {
       else next.add(id);
       return next;
     });
+    if (demo || !myId) return; // demo mode keeps saves in memory only
+    const supabase = createClient();
     if (isSaved) {
       await supabase.from("saved_listings").delete().eq("user_id", myId).eq("listing_id", id);
     } else {
       await supabase.from("saved_listings").upsert({ user_id: myId, listing_id: id });
     }
+  }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let out = listings.filter((l) => {
+      if (q) {
+        const hay = `${l.title} ${l.city ?? ""} ${l.neighborhood ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (maxRent < 3000 && (l.rent == null || l.rent > maxRent)) return false;
+      if (minBeds > 0 && (l.bedrooms ?? 0) < minBeds) return false;
+      if (minBaths > 0 && (l.bathrooms ?? 0) < minBaths) return false;
+      if (verifiedOnly && !l.verified) return false;
+      return true;
+    });
+    if (sort !== "new") {
+      out = [...out].sort((a, b) => {
+        const ar = a.rent ?? Infinity;
+        const br = b.rent ?? Infinity;
+        return sort === "price-asc" ? ar - br : br - ar;
+      });
+    }
+    return out;
+  }, [listings, query, maxRent, minBeds, minBaths, verifiedOnly, sort]);
+
+  const hasActiveFilters =
+    query.trim() !== "" || maxRent < 3000 || minBeds > 0 || minBaths > 0 || verifiedOnly;
+
+  function resetFilters() {
+    setQuery("");
+    setMaxRent(3000);
+    setMinBeds(0);
+    setMinBaths(0);
+    setVerifiedOnly(false);
+    setSort("new");
   }
 
   return (
@@ -93,6 +140,11 @@ export default function ApartmentsPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Verified places posted right here on Roomly — no scraped listings, no fakes.
         </p>
+        {demo && (
+          <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
+            ✨ Showing demo listings. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to switch to real, saved data.
+          </div>
+        )}
 
         {loading ? (
           <p className="mt-10 text-center text-sm text-zinc-500">Loading places…</p>
@@ -105,11 +157,6 @@ export default function ApartmentsPage() {
               Go to log in
             </Link>
           </div>
-        ) : needsSetup ? (
-          <Empty
-            title="Apartments aren't set up yet"
-            body="Run the latest supabase/schema.sql in your Supabase SQL editor to create the listings tables."
-          />
         ) : listings.length === 0 ? (
           <div className="mt-10 text-center">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No places listed yet.</p>
@@ -119,8 +166,76 @@ export default function ApartmentsPage() {
             </Link>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {listings.map((l, i) => (
+          <>
+            <div className="mt-6 space-y-4 rounded-3xl border border-zinc-200 bg-white/80 p-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 dark:border-zinc-700 dark:bg-zinc-950">
+                <span aria-hidden="true" className="text-zinc-400">🔍</span>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search city or neighborhood"
+                  aria-label="Search apartments"
+                  className="h-10 flex-1 bg-transparent text-sm text-zinc-900 outline-none dark:text-zinc-100"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Segmented label="Beds" value={minBeds} onChange={setMinBeds} options={[{ v: 0, label: "Any" }, { v: 1, label: "1+" }, { v: 2, label: "2+" }, { v: 3, label: "3+" }]} />
+                <Segmented label="Baths" value={minBaths} onChange={setMinBaths} options={[{ v: 0, label: "Any" }, { v: 1, label: "1+" }, { v: 2, label: "2+" }]} />
+              </div>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Max rent</span>
+                  <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{maxRent >= 3000 ? "Any" : `$${maxRent.toLocaleString()}/mo`}</span>
+                </div>
+                <input
+                  type="range"
+                  min={500}
+                  max={3000}
+                  step={50}
+                  value={maxRent}
+                  onChange={(e) => setMaxRent(parseInt(e.target.value, 10))}
+                  aria-label="Maximum rent"
+                  className="w-full accent-violet-600"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} className="h-4 w-4 rounded accent-violet-600" />
+                  Verified only
+                </label>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as "new" | "price-asc" | "price-desc")}
+                  aria-label="Sort listings"
+                  className="h-9 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                >
+                  <option value="new">Newest</option>
+                  <option value="price-asc">Price: low to high</option>
+                  <option value="price-desc">Price: high to low</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <span className="text-zinc-500 dark:text-zinc-400">
+                {filtered.length} of {listings.length} {listings.length === 1 ? "place" : "places"}
+              </span>
+              {hasActiveFilters && (
+                <button type="button" onClick={resetFilters} className="font-medium text-violet-600 hover:underline dark:text-violet-400">
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="mt-8 rounded-3xl border border-zinc-200 bg-white/70 p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/70">
+                <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No places match those filters.</p>
+                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Try widening your budget or beds.</p>
+                <button type="button" onClick={resetFilters} className="roomly-btn mt-5 h-10 px-5 text-sm">Clear filters</button>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {filtered.map((l, i) => (
               <article
                 key={l.id}
                 role="button"
@@ -168,11 +283,47 @@ export default function ApartmentsPage() {
                   <p className="mt-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">{bedBath(l)}</p>
                 </div>
               </article>
-            ))}
-          </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </main>
+  );
+}
+
+function Segmented({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  options: { v: number; label: string }[];
+}) {
+  return (
+    <div>
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{label}</span>
+      <div className="flex gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onChange(o.v)}
+            className={`h-9 flex-1 rounded-xl border text-sm font-medium transition-all ${
+              value === o.v
+                ? "border-transparent bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white shadow-sm"
+                : "border-zinc-200 text-zinc-600 hover:border-violet-300 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-violet-700"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

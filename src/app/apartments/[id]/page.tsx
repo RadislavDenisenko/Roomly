@@ -13,6 +13,7 @@ import {
   bedBath,
   formatAvailable,
   isMissingTable,
+  DEMO_LISTINGS,
 } from "@/lib/listings";
 
 type Owner = { id: string; full_name: string | null; avatar_url: string | null; photos: string[] | null };
@@ -26,6 +27,7 @@ export default function ListingDetailPage() {
   const [owner, setOwner] = useState<Owner | null>(null);
   const [saved, setSaved] = useState(false);
   const [missing, setMissing] = useState(false);
+  const [demo, setDemo] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [photoIdx, setPhotoIdx] = useState(0);
 
@@ -43,8 +45,13 @@ export default function ListingDetailPage() {
 
       const { data, error } = await supabase.from("listings").select("*").eq("id", id).single();
       if (error || !data) {
-        if (isMissingTable(error)) setMissing(true);
-        else setMissing(true);
+        const demoListing = DEMO_LISTINGS.find((dl) => dl.id === id);
+        if (demoListing) {
+          setListing(demoListing);
+          setDemo(true);
+        } else {
+          setMissing(true);
+        }
         setLoading(false);
         return;
       }
@@ -70,10 +77,11 @@ export default function ListingDetailPage() {
   }, [id]);
 
   async function toggleSave() {
-    if (!myId || !listing) return;
-    const supabase = createClient();
+    if (!listing) return;
     const next = !saved;
     setSaved(next);
+    if (demo || !myId) return; // demo mode keeps saves in memory only
+    const supabase = createClient();
     if (next) {
       await supabase.from("saved_listings").upsert({ user_id: myId, listing_id: listing.id });
     } else {
