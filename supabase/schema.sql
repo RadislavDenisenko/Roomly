@@ -86,3 +86,27 @@ create policy "Like as yourself" on public.likes
 drop policy if exists "Remove own likes" on public.likes;
 create policy "Remove own likes" on public.likes
   for delete using (auth.uid() = liker_id);
+
+-- Messages -----------------------------------------------------------------
+-- You can only message someone you have mutually matched with.
+create table if not exists public.messages (
+  id bigint generated always as identity primary key,
+  sender_id uuid not null references auth.users on delete cascade,
+  recipient_id uuid not null references auth.users on delete cascade,
+  body text not null,
+  created_at timestamptz default now()
+);
+
+alter table public.messages enable row level security;
+
+drop policy if exists "See your own messages" on public.messages;
+create policy "See your own messages" on public.messages
+  for select using (auth.uid() = sender_id or auth.uid() = recipient_id);
+
+drop policy if exists "Message your matches" on public.messages;
+create policy "Message your matches" on public.messages
+  for insert with check (
+    auth.uid() = sender_id
+    and exists (select 1 from public.likes where liker_id = auth.uid() and liked_id = recipient_id)
+    and exists (select 1 from public.likes where liker_id = recipient_id and liked_id = auth.uid())
+  );
