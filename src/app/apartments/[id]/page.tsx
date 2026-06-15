@@ -12,7 +12,6 @@ import {
   formatRent,
   bedBath,
   formatAvailable,
-  isMissingTable,
   DEMO_LISTINGS,
 } from "@/lib/listings";
 

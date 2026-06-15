@@ -175,6 +175,42 @@ drop policy if exists "Unsave own listings" on public.saved_listings;
 create policy "Unsave own listings" on public.saved_listings
   for delete using (auth.uid() = user_id);
 
+-- Collaborative search: each person reacts to listings; a "shared shortlist"
+-- is where BOTH matched roommates liked the same place.
+create table if not exists public.listing_reactions (
+  user_id    uuid not null references auth.users on delete cascade,
+  listing_id uuid not null references public.listings on delete cascade,
+  reaction   text not null check (reaction in ('like', 'pass')),
+  created_at timestamptz default now(),
+  primary key (user_id, listing_id)
+);
+
+alter table public.listing_reactions enable row level security;
+
+-- You can see your own reactions, and the reactions of anyone you have a
+-- mutual match with (so the two of you can compare shortlists).
+drop policy if exists "See own and matched reactions" on public.listing_reactions;
+create policy "See own and matched reactions" on public.listing_reactions
+  for select using (
+    auth.uid() = user_id
+    or (
+      exists (select 1 from public.likes where liker_id = auth.uid() and liked_id = listing_reactions.user_id)
+      and exists (select 1 from public.likes where liker_id = listing_reactions.user_id and liked_id = auth.uid())
+    )
+  );
+
+drop policy if exists "React as yourself" on public.listing_reactions;
+create policy "React as yourself" on public.listing_reactions
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Update own reactions" on public.listing_reactions;
+create policy "Update own reactions" on public.listing_reactions
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "Delete own reactions" on public.listing_reactions;
+create policy "Delete own reactions" on public.listing_reactions
+  for delete using (auth.uid() = user_id);
+
 -- Demo listings (idempotent: each only inserts once, by title) --------------
 insert into public.listings (owner_id, title, description, city, neighborhood, rent, bedrooms, bathrooms, available_from, photos, verified)
 select u.id, 'Sunny 2BR near campus',

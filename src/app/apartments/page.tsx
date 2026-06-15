@@ -126,8 +126,8 @@ export default function ApartmentsPage() {
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
         <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link href="/discover" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Discover
+          <Link href="/apartments/together" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            Together
           </Link>
           <Link href="/apartments/new" className="roomly-btn px-4 py-2 text-sm">
             Post a place
