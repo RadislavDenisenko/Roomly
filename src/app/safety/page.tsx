@@ -6,10 +6,10 @@ export const metadata = {
 
 export default function SafetyPage() {
   return (
-    <main className="flex flex-1 flex-col bg-white dark:bg-zinc-950">
+    <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
+          <span className="roomly-mark h-8 w-8 text-sm">
             R
           </span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -18,7 +18,7 @@ export default function SafetyPage() {
         </Link>
         <Link
           href="/signup"
-          className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          className="roomly-btn px-4 py-2 text-sm"
         >
           Get started
         </Link>

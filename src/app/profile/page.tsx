@@ -18,7 +18,7 @@ type Form = {
   smoking: boolean;
   pets: boolean;
   guests: string;
-  avatar_url: string;
+  photos: string[];
   db_nonsmokers_only: boolean;
   db_no_pet_owners: boolean;
   db_budget_overlap_only: boolean;
@@ -37,14 +37,18 @@ const EMPTY: Form = {
   smoking: false,
   pets: false,
   guests: "sometimes",
-  avatar_url: "",
+  photos: [],
   db_nonsmokers_only: false,
   db_no_pet_owners: false,
   db_budget_overlap_only: false,
 };
 
+const MAX_PHOTOS = 6;
+
 export default function ProfilePage() {
-  const [loading, setLoading] = useState(true);
+  // Seed from supabaseConfigured (a stable build-time constant) so we never need a
+  // synchronous setLoading(false) in the effect when accounts aren't connected.
+  const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,10 +58,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    if (!supabaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    if (!supabaseConfigured) return;
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
@@ -86,7 +87,12 @@ export default function ProfilePage() {
           smoking: profile.smoking ?? false,
           pets: profile.pets ?? false,
           guests: profile.guests ?? "sometimes",
-          avatar_url: profile.avatar_url ?? "",
+          photos:
+            profile.photos && profile.photos.length > 0
+              ? profile.photos
+              : profile.avatar_url
+                ? [profile.avatar_url]
+                : [],
           db_nonsmokers_only: profile.db_nonsmokers_only ?? false,
           db_no_pet_owners: profile.db_no_pet_owners ?? false,
           db_budget_overlap_only: profile.db_budget_overlap_only ?? false,
@@ -101,9 +107,10 @@ export default function ProfilePage() {
     setSaved(false);
   }
 
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleAddPhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // let the same file be re-selected later
+    if (!files.length) return;
     setError(null);
     setUploading(true);
     const supabase = createClient();
@@ -112,19 +119,40 @@ export default function ProfilePage() {
       setUploading(false);
       return;
     }
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${userData.user.id}/avatar.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
-    if (upErr) {
-      setError("Photo upload failed — is the 'avatars' storage bucket set up? " + upErr.message);
-      setUploading(false);
-      return;
+    const uid = userData.user.id;
+    const room = MAX_PHOTOS - form.photos.length;
+    const urls: string[] = [];
+    for (const file of files.slice(0, room)) {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (upErr) {
+        setError("Photo upload failed — is the 'avatars' storage bucket set up? " + upErr.message);
+        setUploading(false);
+        return;
+      }
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+      urls.push(pub.publicUrl);
     }
-    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-    update("avatar_url", `${pub.publicUrl}?t=${Date.now()}`);
+    setForm((f) => ({ ...f, photos: [...f.photos, ...urls] }));
+    setSaved(false);
     setUploading(false);
+  }
+
+  function removePhoto(idx: number) {
+    setForm((f) => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }));
+    setSaved(false);
+  }
+
+  function makeMain(idx: number) {
+    setForm((f) => {
+      const next = [...f.photos];
+      const [pick] = next.splice(idx, 1);
+      return { ...f, photos: [pick, ...next] };
+    });
+    setSaved(false);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -153,7 +181,8 @@ export default function ProfilePage() {
       smoking: form.smoking,
       pets: form.pets,
       guests: form.guests,
-      avatar_url: form.avatar_url || null,
+      avatar_url: form.photos[0] ?? null,
+      photos: form.photos,
       db_nonsmokers_only: form.db_nonsmokers_only,
       db_no_pet_owners: form.db_no_pet_owners,
       db_budget_overlap_only: form.db_budget_overlap_only,
@@ -184,7 +213,7 @@ export default function ProfilePage() {
         </p>
         <Link
           href="/login"
-          className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="roomly-btn mt-4 h-11 px-6 text-sm"
         >
           Go to log in
         </Link>
@@ -193,10 +222,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+    <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
+          <span className="roomly-mark h-8 w-8 text-sm">
             R
           </span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -205,7 +234,7 @@ export default function ProfilePage() {
         </Link>
         <Link
           href="/discover"
-          className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          className="roomly-btn px-4 py-2 text-sm"
         >
           Discover →
         </Link>
@@ -228,24 +257,64 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <Card title="Photo">
-          <div className="flex items-center gap-4">
-            {form.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={form.avatar_url}
-                alt="Your photo"
-                className="h-20 w-20 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-3xl font-bold text-white">
-                {(form.full_name || "?").charAt(0).toUpperCase()}
+        <Card title="Photos">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Add up to {MAX_PHOTOS}. Your first photo is the main one — use “Make
+            main” on another to swap.
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {form.photos.map((url, i) => (
+              <div
+                key={url}
+                className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                {i === 0 && (
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Main
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  aria-label="Remove photo"
+                  className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-xs text-white backdrop-blur transition-transform hover:scale-110 active:scale-90"
+                >
+                  ✕
+                </button>
+                {i !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => makeMain(i)}
+                    className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-white/90 py-1 text-[11px] font-semibold text-zinc-800 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus:opacity-100 dark:bg-zinc-900/90 dark:text-zinc-100"
+                  >
+                    Make main
+                  </button>
+                )}
               </div>
+            ))}
+
+            {form.photos.length < MAX_PHOTOS && (
+              <label className="flex aspect-[3/4] cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-zinc-300 text-zinc-500 transition-colors hover:border-violet-400 hover:text-violet-600 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-violet-500">
+                {uploading ? (
+                  <span className="text-xs font-medium">Uploading…</span>
+                ) : (
+                  <>
+                    <span className="text-2xl leading-none">＋</span>
+                    <span className="text-xs font-medium">Add</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleAddPhotos}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
             )}
-            <label className="inline-flex h-10 cursor-pointer items-center rounded-full border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">
-              {uploading ? "Uploading…" : form.avatar_url ? "Change photo" : "Upload photo"}
-              <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
-            </label>
           </div>
         </Card>
 
@@ -342,7 +411,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={saving}
-          className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+          className="roomly-btn mt-6 h-12 w-full text-sm"
         >
           {saving ? "Saving…" : "Save profile"}
         </button>
@@ -357,7 +426,7 @@ function cleanlinessLabel(n: number) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+    <main className="roomly-page flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div className="max-w-sm text-zinc-600 dark:text-zinc-400">{children}</div>
     </main>
   );
@@ -365,7 +434,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    <section className="mt-6 space-y-4 rounded-3xl border border-zinc-200 bg-white/80 p-5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         {title}
       </h2>

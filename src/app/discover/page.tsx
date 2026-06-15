@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ProfileDetail } from "@/components/ProfileDetail";
+import { mainPhoto } from "@/lib/photos";
 
 type Profile = {
   id: string;
@@ -12,6 +14,7 @@ type Profile = {
   city: string | null;
   bio: string | null;
   avatar_url: string | null;
+  photos: string[] | null;
   budget_min: number | null;
   budget_max: number | null;
   cleanliness: number | null;
@@ -83,18 +86,18 @@ function reasons(me: Profile, them: Profile): Reason[] {
 }
 
 export default function DiscoverPage() {
-  const [loading, setLoading] = useState(true);
+  // Seed from supabaseConfigured (a stable build-time constant) so we never need a
+  // synchronous setLoading(false) in the effect when accounts aren't connected.
+  const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [cards, setCards] = useState<{ profile: Profile; score: number; why: Reason[] }[]>([]);
   const [index, setIndex] = useState(0);
   const [match, setMatch] = useState<Profile | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
-    if (!supabaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    if (!supabaseConfigured) return;
     const supabase = createClient();
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -155,7 +158,7 @@ export default function DiscoverPage() {
     return (
       <Centered>
         <p className="text-zinc-600 dark:text-zinc-400">Log in to discover roommates.</p>
-        <Link href="/login" className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700">
+        <Link href="/login" className="roomly-btn mt-4 h-11 px-6 text-sm">
           Go to log in
         </Link>
       </Centered>
@@ -164,10 +167,10 @@ export default function DiscoverPage() {
   const current = cards[index];
 
   return (
-    <main className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+    <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-md items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">R</span>
+          <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
         <Link href="/matches" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
@@ -179,7 +182,7 @@ export default function DiscoverPage() {
         {match && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-3xl bg-emerald-600/95 px-8 text-center text-white backdrop-blur">
             <p className="text-sm font-semibold uppercase tracking-widest text-emerald-100">{"It's a match!"}</p>
-            <Avatar name={match.full_name} url={match.avatar_url} large />
+            <Avatar name={match.full_name} url={mainPhoto(match)} large />
             <h2 className="mt-4 text-2xl font-bold">You and {match.full_name} liked each other 🎉</h2>
             <p className="mt-2 max-w-xs text-sm text-emerald-100">Start the conversation from your Matches.</p>
             <Link href="/matches" className="mt-6 flex h-12 w-full max-w-xs items-center justify-center rounded-full bg-white text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
@@ -201,15 +204,27 @@ export default function DiscoverPage() {
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">No more roommates to show right now.</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Check back soon as more people join.</p>
-            <Link href="/matches" className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700">
+            <Link href="/matches" className="roomly-btn mt-6 h-11 px-6 text-sm">
               See your matches
             </Link>
           </div>
         ) : (
           <>
-            <div className="w-full rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div
+              key={current.profile.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setShowDetail(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowDetail(true);
+                }
+              }}
+              className="roomly-card-in w-full cursor-pointer rounded-3xl border border-zinc-200 bg-white/80 p-6 text-left shadow-sm backdrop-blur transition-shadow duration-300 hover:shadow-xl hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
+            >
               <div className="flex items-center gap-4">
-                <Avatar name={current.profile.full_name} url={current.profile.avatar_url} />
+                <Avatar name={current.profile.full_name} url={mainPhoto(current.profile)} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h2 className="truncate text-xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -254,18 +269,22 @@ export default function DiscoverPage() {
                 <Chip>{current.profile.pets ? "🐾 Has pets" : "No pets"}</Chip>
                 <Chip>{current.profile.smoking ? "🚬 Smoker" : "Non-smoker"}</Chip>
               </div>
+
+              <p className="mt-4 text-center text-xs font-medium text-violet-600 dark:text-violet-400">
+                Tap to view full profile →
+              </p>
             </div>
 
             <div className="mt-6 flex w-full gap-4">
               <button
                 onClick={() => setIndex((i) => i + 1)}
-                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Pass
               </button>
               <button
                 onClick={() => onLike(current.profile)}
-                className="flex h-14 flex-1 items-center justify-center rounded-full bg-emerald-600 text-base font-semibold text-white transition-colors hover:bg-emerald-700"
+                className="roomly-btn h-14 flex-1 text-base"
               >
                 Like 💚
               </button>
@@ -273,6 +292,39 @@ export default function DiscoverPage() {
           </>
         )}
       </div>
+
+      {showDetail && current && (
+        <ProfileDetail
+          profile={current.profile}
+          score={current.score}
+          why={current.why}
+          onClose={() => setShowDetail(false)}
+          footer={
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDetail(false);
+                  setIndex((i) => i + 1);
+                }}
+                className="flex h-12 flex-1 items-center justify-center rounded-full border border-zinc-300 text-sm font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Pass
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDetail(false);
+                  onLike(current.profile);
+                }}
+                className="roomly-btn h-12 flex-1 text-sm"
+              >
+                Like 💚
+              </button>
+            </div>
+          }
+        />
+      )}
     </main>
   );
 }
@@ -290,7 +342,7 @@ function Avatar({ name, url, large }: { name: string | null; url: string | null;
     return <img src={url} alt={name ?? "avatar"} className={`${size} shrink-0 rounded-full object-cover`} />;
   }
   return (
-    <div className={`${size} flex shrink-0 items-center justify-center rounded-full bg-emerald-500 font-bold text-white`}>
+    <div className={`${size} flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 font-bold text-white`}>
       {(name ?? "?").charAt(0).toUpperCase()}
     </div>
   );
@@ -306,7 +358,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+    <main className="roomly-page flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div className="max-w-sm text-zinc-600 dark:text-zinc-400">{children}</div>
     </main>
   );

@@ -36,6 +36,11 @@ alter table public.profiles
   add column if not exists db_no_pet_owners       boolean default false,
   add column if not exists db_budget_overlap_only boolean default false;
 
+-- Profile photo gallery (ordered list of public image URLs; photos[1] is the main one).
+-- avatar_url is kept in sync with the first photo for quick thumbnails.
+alter table public.profiles
+  add column if not exists photos text[] default '{}';
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Authenticated users can view profiles" on public.profiles;

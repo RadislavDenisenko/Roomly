@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
@@ -22,16 +22,29 @@ export default function ConversationPage() {
   const [other, setOther] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
-  const [loading, setLoading] = useState(true);
+  // Seed from supabaseConfigured (a stable build-time constant) so we never need a
+  // synchronous setLoading(false) in the effect when accounts aren't connected.
+  const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
+  const load = useCallback(
+    async (supabase: ReturnType<typeof createClient>, myId: string) => {
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .or(
+          `and(sender_id.eq.${myId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${myId})`,
+        )
+        .order("created_at", { ascending: true });
+      setMessages((data ?? []) as Msg[]);
+    },
+    [otherId],
+  );
+
   useEffect(() => {
-    if (!supabaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    if (!supabaseConfigured) return;
     const supabase = createClient();
     let timer: ReturnType<typeof setInterval> | undefined;
     (async () => {
@@ -56,18 +69,7 @@ export default function ConversationPage() {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [otherId]);
-
-  async function load(supabase: ReturnType<typeof createClient>, myId: string) {
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(
-        `and(sender_id.eq.${myId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${myId})`,
-      )
-      .order("created_at", { ascending: true });
-    setMessages((data ?? []) as Msg[]);
-  }
+  }, [otherId, load]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -99,7 +101,7 @@ export default function ConversationPage() {
         <p className="text-zinc-600 dark:text-zinc-400">Log in to view messages.</p>
         <Link
           href="/login"
-          className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="roomly-btn mt-4 h-11 px-6 text-sm"
         >
           Go to log in
         </Link>
@@ -107,7 +109,7 @@ export default function ConversationPage() {
     );
 
   return (
-    <main className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+    <main className="roomly-page flex flex-1 flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-zinc-200 bg-white/90 px-6 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
         <Link href="/matches" className="text-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
           ←
@@ -116,7 +118,7 @@ export default function ConversationPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={other.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
         ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-sm font-bold text-white">
             {(other?.full_name ?? "?").charAt(0).toUpperCase()}
           </div>
         )}
@@ -138,7 +140,7 @@ export default function ConversationPage() {
                 <div
                   className={`max-w-[78%] rounded-2xl px-4 py-2 text-sm ${
                     mine
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-gradient-to-br from-fuchsia-500 to-violet-600 text-white"
                       : "bg-white text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
                   }`}
                 >
@@ -163,7 +165,7 @@ export default function ConversationPage() {
         />
         <button
           type="submit"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-lg text-white hover:bg-emerald-700"
+          className="roomly-btn h-11 w-11 shrink-0 text-lg"
         >
           ↑
         </button>
@@ -179,7 +181,7 @@ export default function ConversationPage() {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+    <main className="roomly-page flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div className="max-w-sm text-zinc-600 dark:text-zinc-400">{children}</div>
     </main>
   );

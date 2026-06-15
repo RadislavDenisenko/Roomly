@@ -4,27 +4,21 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ProfileDetail, type ProfileFull } from "@/components/ProfileDetail";
+import { mainPhoto } from "@/lib/photos";
 
-type Profile = {
-  id: string;
-  full_name: string | null;
-  age: number | null;
-  city: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  email_verified: boolean | null;
-};
+type Profile = ProfileFull;
 
 export default function MatchesPage() {
-  const [loading, setLoading] = useState(true);
+  // Seed from supabaseConfigured (a stable build-time constant) so we never need a
+  // synchronous setLoading(false) in the effect when accounts aren't connected.
+  const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [matches, setMatches] = useState<Profile[]>([]);
+  const [detail, setDetail] = useState<Profile | null>(null);
 
   useEffect(() => {
-    if (!supabaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    if (!supabaseConfigured) return;
     const supabase = createClient();
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -45,7 +39,7 @@ export default function MatchesPage() {
       if (mutualIds.length) {
         const { data: profs } = await supabase
           .from("profiles")
-          .select("id, full_name, age, city, bio, avatar_url, email_verified")
+          .select("*")
           .in("id", mutualIds);
         setMatches((profs ?? []) as Profile[]);
       }
@@ -54,10 +48,10 @@ export default function MatchesPage() {
   }, []);
 
   return (
-    <main className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+    <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-md items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white">R</span>
+          <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
         <Link href="/discover" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
@@ -68,7 +62,7 @@ export default function MatchesPage() {
       <div className="mx-auto w-full max-w-md flex-1 px-6 pb-16">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Your matches</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          People you both liked. Messaging is coming next — for now, here is who you clicked with.
+          People you both liked. Start a conversation whenever you&apos;re ready.
         </p>
 
         {loading ? (
@@ -76,7 +70,7 @@ export default function MatchesPage() {
         ) : !authed ? (
           <div className="mt-10 text-center">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">Log in to see your matches.</p>
-            <Link href="/login" className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700">
+            <Link href="/login" className="roomly-btn mt-4 h-11 px-6 text-sm">
               Go to log in
             </Link>
           </div>
@@ -84,38 +78,39 @@ export default function MatchesPage() {
           <div className="mt-10 text-center">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No matches yet.</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Like people in Discover — when they like you back, they show up here.</p>
-            <Link href="/discover" className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-700">
+            <Link href="/discover" className="roomly-btn mt-6 h-11 px-6 text-sm">
               Go to Discover
             </Link>
           </div>
         ) : (
           <ul className="mt-6 space-y-3">
-            {matches.map((m) => (
+            {matches.map((m, i) => (
               <li
                 key={m.id}
-                className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                style={{ animationDelay: `${i * 60}ms` }}
+                className="roomly-card-in flex items-center gap-4 rounded-3xl border border-zinc-200 bg-white/80 p-4 backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-violet-900"
               >
-                {m.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.avatar_url} alt={m.full_name ?? "avatar"} className="h-14 w-14 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-xl font-bold text-white">
-                    {(m.full_name ?? "?").charAt(0).toUpperCase()}
+                <button
+                  type="button"
+                  onClick={() => setDetail(m)}
+                  className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={mainPhoto(m)} alt={m.full_name ?? "avatar"} className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
+                        {m.full_name}
+                        {m.age ? `, ${m.age}` : ""}
+                      </p>
+                      {m.email_verified && <VerifiedBadge />}
+                    </div>
+                    {m.city && <p className="text-sm text-zinc-500 dark:text-zinc-400">{m.city}</p>}
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                      {m.full_name}
-                      {m.age ? `, ${m.age}` : ""}
-                    </p>
-                    {m.email_verified && <VerifiedBadge />}
-                  </div>
-                  {m.city && <p className="text-sm text-zinc-500 dark:text-zinc-400">{m.city}</p>}
-                </div>
+                </button>
                 <Link
                   href={`/messages/${m.id}`}
-                  className="shrink-0 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                  className="roomly-btn shrink-0 px-4 py-2 text-sm"
                 >
                   Message
                 </Link>
@@ -124,6 +119,18 @@ export default function MatchesPage() {
           </ul>
         )}
       </div>
+
+      {detail && (
+        <ProfileDetail
+          profile={detail}
+          onClose={() => setDetail(null)}
+          footer={
+            <Link href={`/messages/${detail.id}`} className="roomly-btn h-12 w-full text-sm">
+              Message {detail.full_name?.split(" ")[0] ?? ""}
+            </Link>
+          }
+        />
+      )}
     </main>
   );
 }

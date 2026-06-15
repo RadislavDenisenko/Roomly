@@ -39,10 +39,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-zinc-50 px-6 py-12 dark:bg-zinc-950">
+    <main className="roomly-page flex flex-1 items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-base font-bold text-white">
+          <span className="roomly-mark h-9 w-9 text-base">
             R
           </span>
           <span className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -50,7 +50,7 @@ export default function LoginPage() {
           </span>
         </Link>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
             Welcome back
           </h1>
@@ -83,7 +83,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex h-11 w-full items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+              className="roomly-btn h-11 w-full text-sm"
             >
               {loading ? "Logging in…" : "Log in"}
             </button>
