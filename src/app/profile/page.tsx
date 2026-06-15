@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 type Form = {
   full_name: string;
@@ -37,6 +38,7 @@ const EMPTY: Form = {
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export default function ProfilePage() {
         return;
       }
       setAuthed(true);
+      setVerified(!!data.user.email_confirmed_at);
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -98,6 +101,7 @@ export default function ProfilePage() {
     }
     const { error } = await supabase.from("profiles").upsert({
       id: userData.user.id,
+      email_verified: !!userData.user.email_confirmed_at,
       full_name: form.full_name || null,
       age: form.age ? parseInt(form.age, 10) : null,
       city: form.city || null,
@@ -175,6 +179,11 @@ export default function ProfilePage() {
           This is what potential roommates see. The lifestyle answers power your
           matches.
         </p>
+        {verified && (
+          <div className="mt-3">
+            <VerifiedBadge label="Email verified" />
+          </div>
+        )}
 
         <Card title="About you">
           <Text label="Full name" value={form.full_name} onChange={(v) => update("full_name", v)} placeholder="Alex Rivera" />

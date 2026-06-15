@@ -1,7 +1,7 @@
 -- Roomly database schema
--- Run this in your Supabase project: SQL Editor → paste → Run.
--- Safe to run multiple times (it drops + recreates policies cleanly).
+-- Run in Supabase: SQL Editor → paste → Run. Safe to run multiple times.
 
+-- Profiles -----------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
   created_at timestamptz default now(),
@@ -30,26 +30,27 @@ create table if not exists public.profiles (
   phone_verified boolean default false
 );
 
+-- Dealbreaker filters (hard "no" preferences)
+alter table public.profiles
+  add column if not exists db_nonsmokers_only     boolean default false,
+  add column if not exists db_no_pet_owners       boolean default false,
+  add column if not exists db_budget_overlap_only boolean default false;
+
 alter table public.profiles enable row level security;
 
--- Anyone logged in can browse profiles (needed for matching).
 drop policy if exists "Authenticated users can view profiles" on public.profiles;
 create policy "Authenticated users can view profiles"
-  on public.profiles for select
-  using (auth.role() = 'authenticated');
+  on public.profiles for select using (auth.role() = 'authenticated');
 
--- You can only create/edit your own profile.
 drop policy if exists "Users can insert their own profile" on public.profiles;
 create policy "Users can insert their own profile"
-  on public.profiles for insert
-  with check (auth.uid() = id);
+  on public.profiles for insert with check (auth.uid() = id);
 
 drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
-  on public.profiles for update
-  using (auth.uid() = id);
+  on public.profiles for update using (auth.uid() = id);
 
--- Automatically create a blank profile row when someone signs up.
+-- Auto-create a blank profile when someone signs up
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
@@ -62,3 +63,26 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Likes / matches ----------------------------------------------------------
+-- A "match" = two rows: A liked B and B liked A.
+create table if not exists public.likes (
+  liker_id   uuid not null references auth.users on delete cascade,
+  liked_id   uuid not null references auth.users on delete cascade,
+  created_at timestamptz default now(),
+  primary key (liker_id, liked_id)
+);
+
+alter table public.likes enable row level security;
+
+drop policy if exists "See own likes" on public.likes;
+create policy "See own likes" on public.likes
+  for select using (auth.uid() = liker_id or auth.uid() = liked_id);
+
+drop policy if exists "Like as yourself" on public.likes;
+create policy "Like as yourself" on public.likes
+  for insert with check (auth.uid() = liker_id);
+
+drop policy if exists "Remove own likes" on public.likes;
+create policy "Remove own likes" on public.likes
+  for delete using (auth.uid() = liker_id);
