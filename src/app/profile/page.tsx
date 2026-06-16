@@ -257,6 +257,20 @@ export default function ProfilePage() {
           </div>
         )}
 
+        <Link
+          href="/apartments/saved"
+          className="mt-5 flex items-center justify-between rounded-2xl border border-zinc-200 bg-white/80 px-5 py-4 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
+        >
+          <span className="flex items-center gap-3">
+            <span aria-hidden="true" className="text-xl">❤️</span>
+            <span>
+              <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">Your saved places</span>
+              <span className="block text-xs text-zinc-500 dark:text-zinc-400">Apartments you&apos;ve hearted</span>
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-violet-600 dark:text-violet-400">→</span>
+        </Link>
+
         <Card title="Photos">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Add up to {MAX_PHOTOS}. Your first photo is the main one — use “Make

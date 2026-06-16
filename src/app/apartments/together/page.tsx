@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { mainPhoto } from "@/lib/photos";
 import { DottedTrail } from "@/components/MapMotif";
+import { ApartmentsNav } from "@/components/ApartmentsNav";
 import {
   type Listing,
   listingMainPhoto,
@@ -158,6 +159,7 @@ export default function TogetherPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           React to places with a matched roommate — the ones you both like land in your shared shortlist.
         </p>
+        <ApartmentsNav />
         {demo && (
           <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
             ✨ Demo mode — {DEMO_MATCH.full_name} has already liked a couple of places. Like them too to see the shared shortlist fill up. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to go live.

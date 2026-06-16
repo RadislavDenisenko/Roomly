@@ -14,6 +14,8 @@ import {
   bedBath,
   formatAvailable,
   DEMO_LISTINGS,
+  getDemoSaved,
+  setDemoSaved,
 } from "@/lib/listings";
 
 type Owner = { id: string; full_name: string | null; avatar_url: string | null; photos: string[] | null };
@@ -49,6 +51,7 @@ export default function ListingDetailPage() {
         if (demoListing) {
           setListing(demoListing);
           setDemo(true);
+          setSaved(getDemoSaved().has(id));
         } else {
           setMissing(true);
         }
@@ -80,7 +83,14 @@ export default function ListingDetailPage() {
     if (!listing) return;
     const next = !saved;
     setSaved(next);
-    if (demo || !myId) return; // demo mode keeps saves in memory only
+    if (demo) {
+      const ids = getDemoSaved();
+      if (next) ids.add(listing.id);
+      else ids.delete(listing.id);
+      setDemoSaved(ids);
+      return;
+    }
+    if (!myId) return;
     const supabase = createClient();
     if (next) {
       await supabase.from("saved_listings").upsert({ user_id: myId, listing_id: listing.id });

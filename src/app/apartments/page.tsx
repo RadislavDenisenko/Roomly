@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { DottedTrail } from "@/components/MapMotif";
+import { ApartmentsNav } from "@/components/ApartmentsNav";
 import {
   type Listing,
   listingMainPhoto,
@@ -13,6 +14,8 @@ import {
   bedBath,
   isMissingTable,
   DEMO_LISTINGS,
+  getDemoSaved,
+  setDemoSaved,
 } from "@/lib/listings";
 
 export default function ApartmentsPage() {
@@ -52,6 +55,7 @@ export default function ApartmentsPage() {
         if (isMissingTable(error)) {
           setListings(DEMO_LISTINGS);
           setDemo(true);
+          setSaved(getDemoSaved());
         }
         setLoading(false);
         return;
@@ -69,13 +73,15 @@ export default function ApartmentsPage() {
 
   async function toggleSave(id: string) {
     const isSaved = saved.has(id);
-    setSaved((s) => {
-      const next = new Set(s);
-      if (isSaved) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    if (demo || !myId) return; // demo mode keeps saves in memory only
+    const next = new Set(saved);
+    if (isSaved) next.delete(id);
+    else next.add(id);
+    setSaved(next);
+    if (demo) {
+      setDemoSaved(next); // persist across pages in demo mode
+      return;
+    }
+    if (!myId) return;
     const supabase = createClient();
     if (isSaved) {
       await supabase.from("saved_listings").delete().eq("user_id", myId).eq("listing_id", id);
@@ -126,14 +132,9 @@ export default function ApartmentsPage() {
           <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
-        <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link href="/apartments/together" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Together
-          </Link>
-          <Link href="/apartments/new" className="roomly-btn px-4 py-2 text-sm">
-            Post a place
-          </Link>
-        </nav>
+        <Link href="/apartments/new" className="roomly-btn px-4 py-2 text-sm">
+          Post a place
+        </Link>
       </header>
 
       <DottedTrail height={40} className="opacity-70" />
@@ -143,6 +144,7 @@ export default function ApartmentsPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Verified places posted right here on Roomly — no scraped listings, no fakes.
         </p>
+        <ApartmentsNav />
         {demo && (
           <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
             ✨ Showing demo listings. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to switch to real, saved data.

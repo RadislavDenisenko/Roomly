@@ -60,6 +60,28 @@ export const DEMO_LISTINGS: Listing[] = [
   { id: "demo-5", owner_id: "demo-owner-5", title: "Studio by the lake", description: "Compact studio with lake views, a Murphy bed, and a tiny but mighty kitchen. Utilities included.", city: "Austin, TX", neighborhood: "Zilker", rent: 1200, bedrooms: null, bathrooms: 1, available_from: null, photos: null, verified: false, created_at: "2026-06-06T00:00:00Z" },
 ];
 
+// In demo mode (tables not created yet) saved places are kept in localStorage
+// so they persist across pages until the real saved_listings table exists.
+const DEMO_SAVED_KEY = "roomly_demo_saved";
+
+export function getDemoSaved(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    return new Set(JSON.parse(localStorage.getItem(DEMO_SAVED_KEY) || "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function setDemoSaved(ids: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DEMO_SAVED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // ignore storage errors (private mode, quota, etc.)
+  }
+}
+
 export function isMissingTable(error: { message?: string; code?: string } | null): boolean {
   if (!error) return false;
   const msg = error.message?.toLowerCase() ?? "";
