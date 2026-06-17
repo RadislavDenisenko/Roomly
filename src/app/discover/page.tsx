@@ -38,7 +38,6 @@ const sleepLabel: Record<string, string> = {
   night_owl: "Night owl",
   flexible: "Flexible",
 };
-const cleanLabel = ["", "Relaxed", "Easygoing", "Tidy", "Very tidy", "Spotless"];
 
 function budgetsOverlap(me: Profile, them: Profile) {
   return (
@@ -361,14 +360,6 @@ function Avatar({ name, url, large }: { name: string | null; url: string | null;
     <div className={`${size} flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 font-bold text-white`}>
       {(name ?? "?").charAt(0).toUpperCase()}
     </div>
-  );
-}
-
-function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-      {children}
-    </span>
   );
 }
 
