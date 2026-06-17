@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { DemoButton } from "@/components/DemoButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -88,6 +89,16 @@ export default function LoginPage() {
               {loading ? "Logging in…" : "Log in"}
             </button>
           </form>
+
+          <div className="mt-5 flex items-center gap-3 text-xs text-zinc-400">
+            <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+            or
+            <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+          <DemoButton className="roomly-btn mt-4 h-11 w-full text-sm" />
+          <p className="mt-2 text-center text-xs text-zinc-400">
+            Explore as a sample user — no signup needed.
+          </p>
 
           <p className="mt-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
             New to Roomly?{" "}
