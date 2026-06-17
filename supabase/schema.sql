@@ -119,12 +119,119 @@ create policy "See your own messages" on public.messages
   for select using (auth.uid() = sender_id or auth.uid() = recipient_id);
 
 drop policy if exists "Message your matches" on public.messages;
-create policy "Message your matches" on public.messages
+drop policy if exists "Message your active matches" on public.messages;
+create policy "Message your active matches" on public.messages
   for insert with check (
     auth.uid() = sender_id
-    and exists (select 1 from public.likes where liker_id = auth.uid() and liked_id = recipient_id)
-    and exists (select 1 from public.likes where liker_id = recipient_id and liked_id = auth.uid())
+    and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
+    and (select verification_status from public.profiles where id = recipient_id) = 'verified'
+    and exists (
+      select 1 from public.matches m
+      where m.status = 'active'
+        and m.user_a = least(auth.uid(), recipient_id)
+        and m.user_b = greatest(auth.uid(), recipient_id)
+    )
+    and not exists (
+      select 1 from public.blocks b
+      where (b.blocker_id = recipient_id and b.blocked_id = auth.uid())
+         or (b.blocker_id = auth.uid() and b.blocked_id = recipient_id)
+    )
   );
+
+-- Matches: one row per pair (ordered), written by trigger on reciprocal like.
+create table if not exists public.matches (
+  id uuid primary key default gen_random_uuid(),
+  user_a uuid not null references auth.users on delete cascade,
+  user_b uuid not null references auth.users on delete cascade,
+  created_at timestamptz default now(),
+  status text not null default 'active' check (status in ('active', 'unmatched')),
+  last_message_at timestamptz,
+  unique (user_a, user_b),
+  check (user_a < user_b)
+);
+
+alter table public.matches enable row level security;
+
+drop policy if exists "See own matches" on public.matches;
+create policy "See own matches" on public.matches
+  for select using (auth.uid() = user_a or auth.uid() = user_b);
+
+drop policy if exists "Update own matches" on public.matches;
+create policy "Update own matches" on public.matches
+  for update using (auth.uid() = user_a or auth.uid() = user_b);
+
+create or replace function public.handle_new_like()
+returns trigger language plpgsql security definer as $$
+begin
+  if exists (select 1 from public.likes
+             where liker_id = new.liked_id and liked_id = new.liker_id) then
+    insert into public.matches (user_a, user_b)
+    values (least(new.liker_id, new.liked_id), greatest(new.liker_id, new.liked_id))
+    on conflict (user_a, user_b) do update set status = 'active';
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists on_like_created on public.likes;
+create trigger on_like_created
+  after insert on public.likes
+  for each row execute procedure public.handle_new_like();
+
+create or replace function public.touch_match_on_message()
+returns trigger language plpgsql security definer as $$
+begin
+  update public.matches
+     set last_message_at = new.created_at
+   where user_a = least(new.sender_id, new.recipient_id)
+     and user_b = greatest(new.sender_id, new.recipient_id);
+  return new;
+end; $$;
+
+drop trigger if exists on_message_sent on public.messages;
+create trigger on_message_sent
+  after insert on public.messages
+  for each row execute procedure public.touch_match_on_message();
+
+-- Blocks (one-directional storage, enforced both ways for messaging).
+create table if not exists public.blocks (
+  blocker_id uuid not null references auth.users on delete cascade,
+  blocked_id uuid not null references auth.users on delete cascade,
+  created_at timestamptz default now(),
+  primary key (blocker_id, blocked_id)
+);
+alter table public.blocks enable row level security;
+
+drop policy if exists "See own blocks" on public.blocks;
+create policy "See own blocks" on public.blocks
+  for select using (auth.uid() = blocker_id);
+drop policy if exists "Block as yourself" on public.blocks;
+create policy "Block as yourself" on public.blocks
+  for insert with check (auth.uid() = blocker_id);
+drop policy if exists "Unblock own" on public.blocks;
+create policy "Unblock own" on public.blocks
+  for delete using (auth.uid() = blocker_id);
+
+-- Reports (feed the /safety page; no client select needed).
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter_id uuid not null references auth.users on delete cascade,
+  reported_id uuid not null references auth.users on delete cascade,
+  reason text,
+  details text,
+  created_at timestamptz default now()
+);
+alter table public.reports enable row level security;
+
+drop policy if exists "Report as yourself" on public.reports;
+create policy "Report as yourself" on public.reports
+  for insert with check (auth.uid() = reporter_id);
+
+-- Backfill matches for pairs that already liked each other before the trigger existed.
+insert into public.matches (user_a, user_b)
+select least(l1.liker_id, l1.liked_id), greatest(l1.liker_id, l1.liked_id)
+from public.likes l1
+join public.likes l2 on l2.liker_id = l1.liked_id and l2.liked_id = l1.liker_id
+on conflict (user_a, user_b) do nothing;
 
 -- Apartment listings -------------------------------------------------------
 -- In-app listings posted by owners/landlords (verified by Roomly, not scraped
