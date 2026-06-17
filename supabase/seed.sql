@@ -70,7 +70,7 @@ on conflict do nothing;
 
 -- 5) One clean sample message (seed.alex -> maya), only if not already present.
 insert into public.messages (sender_id, recipient_id, body)
-select s.id, m.id, 'Hey! Saw we matched — your place sounds great. When are you hoping to move in?'
+select s.id, m.id, 'Hey! Saw we matched and your place sounds great. When are you hoping to move in?'
 from auth.users m join auth.users s on s.email = 'seed.alex@roomly.demo'
 where m.email = 'sample.maya@roomly.test'
   and not exists (select 1 from public.messages x where x.sender_id = s.id and x.recipient_id = m.id);
