@@ -100,6 +100,7 @@ export default function ConversationPage() {
 
   async function unmatch() {
     if (!me) return;
+    setMenuOpen(false);
     const supabase = createClient();
     const [a, b] = orderedPair(me, otherId);
     await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
@@ -108,6 +109,7 @@ export default function ConversationPage() {
 
   async function block() {
     if (!me) return;
+    setMenuOpen(false);
     const supabase = createClient();
     await supabase.from("blocks").insert({ blocker_id: me, blocked_id: otherId });
     const [a, b] = orderedPair(me, otherId);
@@ -120,6 +122,7 @@ export default function ConversationPage() {
     const supabase = createClient();
     await supabase.from("reports").insert({ reporter_id: me, reported_id: otherId, reason: reportReason || "unspecified" });
     setReporting(false);
+    setReportReason("");
     setMenuOpen(false);
   }
 
