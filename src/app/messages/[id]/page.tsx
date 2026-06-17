@@ -29,6 +29,8 @@ export default function ConversationPage() {
   const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -101,17 +103,27 @@ export default function ConversationPage() {
   async function unmatch() {
     if (!me) return;
     setMenuOpen(false);
+    setActionError(null);
     const supabase = createClient();
     const [a, b] = orderedPair(me, otherId);
-    await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
+    const { error } = await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
+    if (error) {
+      setActionError("Could not unmatch — please try again.");
+      return;
+    }
     router.push("/matches");
   }
 
   async function block() {
     if (!me) return;
     setMenuOpen(false);
+    setActionError(null);
     const supabase = createClient();
-    await supabase.from("blocks").insert({ blocker_id: me, blocked_id: otherId });
+    const { error: blockError } = await supabase.from("blocks").insert({ blocker_id: me, blocked_id: otherId });
+    if (blockError) {
+      setActionError("Could not block — please try again.");
+      return;
+    }
     const [a, b] = orderedPair(me, otherId);
     await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
     router.push("/matches");
@@ -119,8 +131,13 @@ export default function ConversationPage() {
 
   async function submitReport() {
     if (!me) return;
+    setReportError(null);
     const supabase = createClient();
-    await supabase.from("reports").insert({ reporter_id: me, reported_id: otherId, reason: reportReason || "unspecified" });
+    const { error } = await supabase.from("reports").insert({ reporter_id: me, reported_id: otherId, reason: reportReason || "unspecified" });
+    if (error) {
+      setReportError("Could not submit report — please try again.");
+      return;
+    }
     setReporting(false);
     setReportReason("");
     setMenuOpen(false);
@@ -170,6 +187,12 @@ export default function ConversationPage() {
           )}
         </div>
       </header>
+
+      {actionError && (
+        <p className="mx-auto w-full max-w-md px-4 pt-2 text-center text-xs text-red-600">
+          {actionError}
+        </p>
+      )}
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-2 px-4 py-6">
         {messages.length === 0 ? (
@@ -233,6 +256,9 @@ export default function ConversationPage() {
               <button type="button" onClick={() => setReporting(false)} className="h-10 flex-1 rounded-full border border-zinc-300 text-sm font-semibold dark:border-zinc-700">Cancel</button>
               <button type="button" onClick={submitReport} className="roomly-btn h-10 flex-1 text-sm">Send report</button>
             </div>
+            {reportError && (
+              <p className="mt-2 text-center text-xs text-red-600">{reportError}</p>
+            )}
             <p className="mt-3 text-center text-xs text-zinc-400">See our <Link href="/safety" className="underline">safety guidelines</Link>.</p>
           </div>
         </div>
