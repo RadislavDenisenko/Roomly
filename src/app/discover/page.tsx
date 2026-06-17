@@ -6,6 +6,7 @@ import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { ProfileDetail } from "@/components/ProfileDetail";
 import { mainPhoto } from "@/lib/photos";
+import { isVerified, type VerificationStatus } from "@/lib/verification";
 
 type Profile = {
   id: string;
@@ -23,6 +24,7 @@ type Profile = {
   pets: boolean | null;
   guests: string | null;
   email_verified: boolean | null;
+  verification_status?: VerificationStatus | null;
 };
 
 type MyProfile = Profile & {
@@ -236,7 +238,7 @@ export default function DiscoverPage() {
                       {current.profile.full_name}
                       {current.profile.age ? `, ${current.profile.age}` : ""}
                     </h2>
-                    {current.profile.email_verified && <VerifiedBadge />}
+                    {isVerified(current.profile) && <VerifiedBadge />}
                   </div>
                   {current.profile.city && (
                     <p className="text-sm text-zinc-500 dark:text-zinc-400">{current.profile.city}</p>

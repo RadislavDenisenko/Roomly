@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { galleryPhotos } from "@/lib/photos";
+import type { VerificationStatus } from "@/lib/verification";
+import { isVerified } from "@/lib/verification";
 
 export type ProfileFull = {
   id: string;
@@ -21,6 +23,7 @@ export type ProfileFull = {
   guests: string | null;
   move_in_date?: string | null;
   email_verified: boolean | null;
+  verification_status?: VerificationStatus | null;
 };
 
 export type Reason = { good: boolean; text: string };
@@ -149,7 +152,7 @@ export function ProfileDetail({
                 {profile.full_name}
                 {profile.age ? `, ${profile.age}` : ""}
               </h2>
-              {profile.email_verified && <VerifiedBadge />}
+              {isVerified(profile) && <VerifiedBadge />}
             </div>
             {profile.city && (
               <p className="mt-0.5 text-sm text-white/80">📍 {profile.city}</p>

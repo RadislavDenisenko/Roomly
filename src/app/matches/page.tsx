@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { isVerified } from "@/lib/verification";
 import { ProfileDetail, type ProfileFull } from "@/components/ProfileDetail";
 import { mainPhoto } from "@/lib/photos";
 
@@ -108,7 +109,7 @@ export default function MatchesPage() {
                         {m.full_name}
                         {m.age ? `, ${m.age}` : ""}
                       </p>
-                      {m.email_verified && <VerifiedBadge />}
+                      {isVerified(m) && <VerifiedBadge />}
                     </div>
                     {m.city && <p className="text-sm text-zinc-500 dark:text-zinc-400">{m.city}</p>}
                   </div>
