@@ -35,12 +35,11 @@ export default function VerifyPage() {
   }, []);
 
   async function persist(next: Steps) {
-    setSteps(next);
     const supabase = createClient();
     const { data } = await supabase.auth.getUser();
     if (!data.user) return;
     const status = deriveVerificationStatus(next);
-    await supabase.from("profiles").upsert({
+    const { error } = await supabase.from("profiles").upsert({
       id: data.user.id,
       email_verified: next.email,
       phone_verified: next.phone,
@@ -48,6 +47,11 @@ export default function VerifyPage() {
       verification_status: status,
       verified_at: status === "verified" ? new Date().toISOString() : null,
     });
+    if (error) {
+      setNote("Couldn't save your progress — please try again.");
+      return;
+    }
+    setSteps(next);
   }
 
   async function sendPhoneCode() {
@@ -69,10 +73,13 @@ export default function VerifyPage() {
   }
 
   async function completeId() {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 600)); // placeholder for a real provider check
-    await persist({ ...steps, id: true });
-    setBusy(false);
+    setBusy(true); setNote(null);
+    try {
+      await new Promise((r) => setTimeout(r, 600)); // placeholder for a real provider check
+      await persist({ ...steps, id: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loading) return <Centered>Loading…</Centered>;
