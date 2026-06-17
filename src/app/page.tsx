@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DemoButton } from "@/components/DemoButton";
 
 export default function Home() {
   return (
@@ -47,14 +48,18 @@ export default function Home() {
 
         <HouseScene />
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/signup" className="flex h-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600 px-8 text-base font-bold text-white shadow-xl shadow-violet-500/30 transition-transform hover:scale-105">
-            Start swiping — free
-          </Link>
-          <Link href="/safety" className="flex h-14 items-center justify-center rounded-full border-2 border-zinc-200 bg-white/70 px-8 text-base font-bold text-zinc-800 backdrop-blur transition-colors hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-900">
-            How it works
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+          <DemoButton className="flex h-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600 px-8 text-base font-bold text-white shadow-xl shadow-violet-500/30 transition-transform hover:scale-105 disabled:opacity-70" />
+          <Link href="/signup" className="flex h-14 items-center justify-center rounded-full border-2 border-zinc-200 bg-white/70 px-8 text-base font-bold text-zinc-800 backdrop-blur transition-colors hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-900">
+            Sign up free
           </Link>
         </div>
+        <p className="mt-3 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          No signup — jump straight into a live demo.{" "}
+          <Link href="/safety" className="font-bold text-fuchsia-600 hover:underline dark:text-fuchsia-400">
+            See how we verify
+          </Link>
+        </p>
       </section>
 
       <section className="relative z-10 mx-auto grid w-full max-w-4xl gap-4 px-6 pb-16 sm:grid-cols-3">

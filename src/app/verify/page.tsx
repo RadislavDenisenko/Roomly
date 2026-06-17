@@ -142,7 +142,7 @@ export default function VerifyPage() {
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Identity confirmed.</p>
             ) : (
               <>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Secure identity check — provider coming soon. For now this completes instantly.</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Demo step — a real ID + selfie check (e.g. Stripe Identity / Persona) plugs in here later. For now it completes instantly.</p>
                 <button type="button" disabled={busy} onClick={completeId} className="roomly-btn mt-3 h-11 px-4 text-sm">Run identity check</button>
               </>
             )}
