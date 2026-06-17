@@ -87,6 +87,11 @@ function reasons(me: Profile, them: Profile): Reason[] {
   return r.slice(0, 4);
 }
 
+function headline(score: number, why: Reason[]): string {
+  const top = why.find((r) => r.good);
+  return top ? top.text : `${score}% match`;
+}
+
 export default function DiscoverPage() {
   // Seed from supabaseConfigured (a stable build-time constant) so we never need a
   // synchronous setLoading(false) in the effect when accounts aren't connected.
@@ -97,6 +102,7 @@ export default function DiscoverPage() {
   const [match, setMatch] = useState<Profile | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [meVerified, setMeVerified] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -113,6 +119,18 @@ export default function DiscoverPage() {
 
       const { data: meRow } = await supabase.from("profiles").select("*").eq("id", uid).single();
       const me = (meRow ?? { id: uid }) as MyProfile;
+      const meVerified = me.verification_status === "verified";
+      setMeVerified(meVerified);
+
+      const { data: blockRows } = await supabase
+        .from("blocks")
+        .select("blocker_id, blocked_id")
+        .or(`blocker_id.eq.${uid},blocked_id.eq.${uid}`);
+      const blocked = new Set(
+        (blockRows ?? []).map((b: { blocker_id: string; blocked_id: string }) =>
+          b.blocker_id === uid ? b.blocked_id : b.blocker_id,
+        ),
+      );
 
       const { data: myLikes } = await supabase.from("likes").select("liked_id").eq("liker_id", uid);
       const liked = new Set((myLikes ?? []).map((l: { liked_id: string }) => l.liked_id));
@@ -124,6 +142,8 @@ export default function DiscoverPage() {
         .not("full_name", "is", null);
 
       const filtered = ((others ?? []) as Profile[]).filter((p) => {
+        if (!isVerified(p)) return false;
+        if (blocked.has(p.id)) return false;
         if (liked.has(p.id)) return false;
         if (me.db_nonsmokers_only && p.smoking) return false;
         if (me.db_no_pet_owners && p.pets) return false;
@@ -207,7 +227,14 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {!current ? (
+        {!meVerified ? (
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <span className="text-4xl" aria-hidden="true">🛡️</span>
+            <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Get verified to start matching</p>
+            <p className="mt-2 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">Roomly only shows you verified people — and only verified people see you. It takes a minute.</p>
+            <Link href="/verify" className="roomly-btn mt-6 h-11 px-6 text-sm">Verify my identity</Link>
+          </div>
+        ) : !current ? (
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">No more roommates to show right now.</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Check back soon as more people join.</p>
@@ -249,36 +276,18 @@ export default function DiscoverPage() {
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {current.why.map((r, i) => (
-                  <span
-                    key={i}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
-                      r.good
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                    }`}
-                  >
-                    {r.good ? "✓" : "⚠"} {r.text}
-                  </span>
-                ))}
-              </div>
+              <p className="mt-4 text-base font-medium text-zinc-800 dark:text-zinc-200">
+                ✨ {headline(current.score, current.why)}
+              </p>
 
               {current.profile.bio && (
-                <p className="mt-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{current.profile.bio}</p>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  {current.profile.bio}
+                </p>
               )}
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {current.profile.budget_min || current.profile.budget_max ? (
-                  <Chip>${current.profile.budget_min ?? "?"}–{current.profile.budget_max ?? "?"}/mo</Chip>
-                ) : null}
-                {current.profile.cleanliness ? <Chip>{cleanLabel[current.profile.cleanliness]}</Chip> : null}
-                <Chip>{current.profile.pets ? "🐾 Has pets" : "No pets"}</Chip>
-                <Chip>{current.profile.smoking ? "🚬 Smoker" : "Non-smoker"}</Chip>
-              </div>
-
               <p className="mt-4 text-center text-xs font-medium text-violet-600 dark:text-violet-400">
-                Tap to view full profile →
+                Tap to see why you match →
               </p>
             </div>
 
