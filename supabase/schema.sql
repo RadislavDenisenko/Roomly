@@ -118,26 +118,6 @@ drop policy if exists "See your own messages" on public.messages;
 create policy "See your own messages" on public.messages
   for select using (auth.uid() = sender_id or auth.uid() = recipient_id);
 
-drop policy if exists "Message your matches" on public.messages;
-drop policy if exists "Message your active matches" on public.messages;
-create policy "Message your active matches" on public.messages
-  for insert with check (
-    auth.uid() = sender_id
-    and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
-    and (select verification_status from public.profiles where id = recipient_id) = 'verified'
-    and exists (
-      select 1 from public.matches m
-      where m.status = 'active'
-        and m.user_a = least(auth.uid(), recipient_id)
-        and m.user_b = greatest(auth.uid(), recipient_id)
-    )
-    and not exists (
-      select 1 from public.blocks b
-      where (b.blocker_id = recipient_id and b.blocked_id = auth.uid())
-         or (b.blocker_id = auth.uid() and b.blocked_id = recipient_id)
-    )
-  );
-
 -- Matches: one row per pair (ordered), written by trigger on reciprocal like.
 create table if not exists public.matches (
   id uuid primary key default gen_random_uuid(),
@@ -210,6 +190,27 @@ create policy "Block as yourself" on public.blocks
 drop policy if exists "Unblock own" on public.blocks;
 create policy "Unblock own" on public.blocks
   for delete using (auth.uid() = blocker_id);
+
+-- Message policy referencing matches + blocks (placed here so both tables exist).
+drop policy if exists "Message your matches" on public.messages;
+drop policy if exists "Message your active matches" on public.messages;
+create policy "Message your active matches" on public.messages
+  for insert with check (
+    auth.uid() = sender_id
+    and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
+    and (select verification_status from public.profiles where id = recipient_id) = 'verified'
+    and exists (
+      select 1 from public.matches m
+      where m.status = 'active'
+        and m.user_a = least(auth.uid(), recipient_id)
+        and m.user_b = greatest(auth.uid(), recipient_id)
+    )
+    and not exists (
+      select 1 from public.blocks b
+      where (b.blocker_id = recipient_id and b.blocked_id = auth.uid())
+         or (b.blocker_id = auth.uid() and b.blocked_id = recipient_id)
+    )
+  );
 
 -- Reports (feed the /safety page; no client select needed).
 create table if not exists public.reports (
