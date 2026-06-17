@@ -41,6 +41,13 @@ alter table public.profiles
 alter table public.profiles
   add column if not exists photos text[] default '{}';
 
+-- Identity verification (email + phone + gov-ID/selfie). Source of truth for gating.
+alter table public.profiles
+  add column if not exists verification_status text not null default 'unverified'
+    check (verification_status in ('unverified', 'pending', 'verified')),
+  add column if not exists id_verified boolean default false,
+  add column if not exists verified_at timestamptz;
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Authenticated users can view profiles" on public.profiles;
@@ -86,7 +93,10 @@ create policy "See own likes" on public.likes
 
 drop policy if exists "Like as yourself" on public.likes;
 create policy "Like as yourself" on public.likes
-  for insert with check (auth.uid() = liker_id);
+  for insert with check (
+    auth.uid() = liker_id
+    and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
+  );
 
 drop policy if exists "Remove own likes" on public.likes;
 create policy "Remove own likes" on public.likes
