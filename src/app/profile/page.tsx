@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 type Form = {
   full_name: string;
@@ -50,7 +49,7 @@ export default function ProfilePage() {
   // synchronous setLoading(false) in the effect when accounts aren't connected.
   const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const [vStatus, setVStatus] = useState<"unverified" | "pending" | "verified">("unverified");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,12 +66,12 @@ export default function ProfilePage() {
         return;
       }
       setAuthed(true);
-      setVerified(!!data.user.email_confirmed_at);
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", data.user.id)
         .single();
+      setVStatus((profile?.verification_status as "unverified" | "pending" | "verified") ?? "unverified");
       if (profile) {
         setForm({
           full_name: profile.full_name ?? "",
@@ -251,11 +250,23 @@ export default function ProfilePage() {
           This is what potential roommates see. The lifestyle answers power your
           matches.
         </p>
-        {verified && (
-          <div className="mt-3">
-            <VerifiedBadge label="Email verified" />
-          </div>
-        )}
+        <Link
+          href="/verify"
+          className="mt-5 flex items-center justify-between rounded-2xl border border-zinc-200 bg-white/80 px-5 py-4 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
+        >
+          <span className="flex items-center gap-3">
+            <span aria-hidden="true" className="text-xl">{vStatus === "verified" ? "✅" : "🛡️"}</span>
+            <span>
+              <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                {vStatus === "verified" ? "You're verified" : "Get verified"}
+              </span>
+              <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                {vStatus === "verified" ? "You can match and message." : "Required to match and message on Roomly."}
+              </span>
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-violet-600 dark:text-violet-400">→</span>
+        </Link>
 
         <Link
           href="/apartments/saved"
