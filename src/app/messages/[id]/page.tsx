@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { pickIcebreakers } from "@/lib/icebreakers";
+import { orderedPair } from "@/lib/matchUtil";
 
 type Msg = {
   id: number;
@@ -28,6 +30,10 @@ export default function ConversationPage() {
   const [authed, setAuthed] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState("");
 
   const load = useCallback(
     async (supabase: ReturnType<typeof createClient>, myId: string) => {
@@ -92,6 +98,31 @@ export default function ConversationPage() {
     await load(supabase, me);
   }
 
+  async function unmatch() {
+    if (!me) return;
+    const supabase = createClient();
+    const [a, b] = orderedPair(me, otherId);
+    await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
+    router.push("/matches");
+  }
+
+  async function block() {
+    if (!me) return;
+    const supabase = createClient();
+    await supabase.from("blocks").insert({ blocker_id: me, blocked_id: otherId });
+    const [a, b] = orderedPair(me, otherId);
+    await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
+    router.push("/matches");
+  }
+
+  async function submitReport() {
+    if (!me) return;
+    const supabase = createClient();
+    await supabase.from("reports").insert({ reporter_id: me, reported_id: otherId, reason: reportReason || "unspecified" });
+    setReporting(false);
+    setMenuOpen(false);
+  }
+
   if (loading) return <Centered>Loading…</Centered>;
   if (!supabaseConfigured)
     return <Centered>Accounts aren&apos;t connected yet — see SETUP.md.</Centered>;
@@ -125,13 +156,28 @@ export default function ConversationPage() {
         <span className="font-semibold text-zinc-900 dark:text-zinc-50">
           {other?.full_name ?? "Roommate"}
         </span>
+        <div className="relative ml-auto">
+          <button type="button" aria-label="Conversation options" onClick={() => setMenuOpen((o) => !o)} className="px-2 text-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">⋯</button>
+          {menuOpen && (
+            <div className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+              <button type="button" onClick={unmatch} className="block w-full px-4 py-2.5 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">Unmatch</button>
+              <button type="button" onClick={block} className="block w-full px-4 py-2.5 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800">Block</button>
+              <button type="button" onClick={() => { setReporting(true); setMenuOpen(false); }} className="block w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40">Report</button>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-2 px-4 py-6">
         {messages.length === 0 ? (
-          <p className="mt-10 text-center text-sm text-zinc-400">
-            Say hi 👋 — this is the start of your conversation.
-          </p>
+          <div className="mt-10 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-zinc-400">Break the ice 👋</p>
+            <div className="flex flex-col gap-2">
+              {pickIcebreakers(3).map((q) => (
+                <button key={q} type="button" onClick={() => setText(q)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300">{q}</button>
+              ))}
+            </div>
+          </div>
         ) : (
           messages.map((m) => {
             const mine = m.sender_id === me;
@@ -174,6 +220,19 @@ export default function ConversationPage() {
         <p className="mx-auto w-full max-w-md px-4 pb-2 text-center text-xs text-red-600">
           {sendError}
         </p>
+      )}
+      {reporting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6" onClick={() => setReporting(false)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 dark:bg-zinc-900" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">Report {other?.full_name ?? "this person"}</h3>
+            <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)} rows={3} placeholder="What's going on?" className="mt-3 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100" />
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={() => setReporting(false)} className="h-10 flex-1 rounded-full border border-zinc-300 text-sm font-semibold dark:border-zinc-700">Cancel</button>
+              <button type="button" onClick={submitReport} className="roomly-btn h-10 flex-1 text-sm">Send report</button>
+            </div>
+            <p className="mt-3 text-center text-xs text-zinc-400">See our <Link href="/safety" className="underline">safety guidelines</Link>.</p>
+          </div>
+        </div>
       )}
     </main>
   );
