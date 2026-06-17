@@ -65,11 +65,14 @@ export default function VerifyPage() {
 
   async function confirmPhoneCode() {
     setBusy(true); setNote(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: "phone_change" });
-    setBusy(false);
-    if (error) { setNote("That code didn't match. Try again."); return; }
-    await persist({ ...steps, phone: true });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: "phone_change" });
+      if (error) { setNote("That code didn't match. Try again."); return; }
+      await persist({ ...steps, phone: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function completeId() {
