@@ -1,5 +1,5 @@
 -- Roomly database schema
--- Run in Supabase: SQL Editor → paste → Run. Safe to run multiple times.
+-- Run in Supabase: SQL Editor -> paste -> Run. Safe to run multiple times.
 
 -- Profiles -----------------------------------------------------------------
 create table if not exists public.profiles (
@@ -90,13 +90,6 @@ alter table public.likes enable row level security;
 drop policy if exists "See own likes" on public.likes;
 create policy "See own likes" on public.likes
   for select using (auth.uid() = liker_id or auth.uid() = liked_id);
-
-drop policy if exists "Like as yourself" on public.likes;
-create policy "Like as yourself" on public.likes
-  for insert with check (
-    auth.uid() = liker_id
-    and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
-  );
 
 drop policy if exists "Remove own likes" on public.likes;
 create policy "Remove own likes" on public.likes
@@ -191,6 +184,29 @@ drop policy if exists "Unblock own" on public.blocks;
 create policy "Unblock own" on public.blocks
   for delete using (auth.uid() = blocker_id);
 
+-- Helpers (security definer so policy checks can see both sides' rows) ------
+create or replace function public.has_active_match(a uuid, b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.matches m
+    where m.status = 'active'
+      and m.user_a = least(a, b)
+      and m.user_b = greatest(a, b)
+  );
+$$;
+
+create or replace function public.is_blocked_pair(a uuid, b uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.blocks
+    where (blocker_id = a and blocked_id = b)
+       or (blocker_id = b and blocked_id = a)
+  );
+$$;
+
+grant execute on function public.has_active_match(uuid, uuid) to authenticated;
+grant execute on function public.is_blocked_pair(uuid, uuid) to authenticated;
+
 -- Message policy referencing matches + blocks (placed here so both tables exist).
 drop policy if exists "Message your matches" on public.messages;
 drop policy if exists "Message your active matches" on public.messages;
@@ -199,17 +215,17 @@ create policy "Message your active matches" on public.messages
     auth.uid() = sender_id
     and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
     and (select verification_status from public.profiles where id = recipient_id) = 'verified'
-    and exists (
-      select 1 from public.matches m
-      where m.status = 'active'
-        and m.user_a = least(auth.uid(), recipient_id)
-        and m.user_b = greatest(auth.uid(), recipient_id)
-    )
-    and not exists (
-      select 1 from public.blocks b
-      where (b.blocker_id = recipient_id and b.blocked_id = auth.uid())
-         or (b.blocker_id = auth.uid() and b.blocked_id = recipient_id)
-    )
+    and public.has_active_match(auth.uid(), recipient_id)
+    and not public.is_blocked_pair(auth.uid(), recipient_id)
+  );
+
+-- Like policy using helpers (moved here so helpers exist first).
+drop policy if exists "Like as yourself" on public.likes;
+create policy "Like as yourself" on public.likes
+  for insert with check (
+    auth.uid() = liker_id
+    and (select verification_status from public.profiles where id = auth.uid()) = 'verified'
+    and not public.is_blocked_pair(auth.uid(), liked_id)
   );
 
 -- Reports (feed the /safety page; no client select needed).
