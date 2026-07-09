@@ -55,6 +55,8 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
   const [uploading, setUploading] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -150,6 +152,17 @@ export default function ProfilePage() {
       const next = [...f.photos];
       const [pick] = next.splice(idx, 1);
       return { ...f, photos: [pick, ...next] };
+    });
+    setSaved(false);
+  }
+
+  function reorder(from: number, to: number) {
+    if (from === to) return;
+    setForm((f) => {
+      const next = [...f.photos];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return { ...f, photos: next };
     });
     setSaved(false);
   }
@@ -284,17 +297,36 @@ export default function ProfilePage() {
 
         <Card title="Photos">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Add up to {MAX_PHOTOS}. Your first photo is the main one — use “Make
-            main” on another to swap.
+            Add up to {MAX_PHOTOS}. Drag photos to reorder — the first is your
+            main one (or use “Make main”).
           </p>
           <div className="grid grid-cols-3 gap-3">
             {form.photos.map((url, i) => (
               <div
                 key={url}
-                className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+                draggable
+                onDragStart={() => setDragIndex(i)}
+                onDragEnter={() => setOverIndex(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex !== null) reorder(dragIndex, i);
+                  setDragIndex(null);
+                  setOverIndex(null);
+                }}
+                onDragEnd={() => {
+                  setDragIndex(null);
+                  setOverIndex(null);
+                }}
+                className={`group relative aspect-[3/4] cursor-move overflow-hidden rounded-2xl bg-zinc-100 ring-2 transition-all dark:bg-zinc-800 ${
+                  dragIndex === i
+                    ? "opacity-40 ring-transparent"
+                    : overIndex === i
+                      ? "ring-violet-500"
+                      : "ring-transparent"
+                }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                <img src={url} alt={`Photo ${i + 1}`} draggable={false} className="h-full w-full object-cover" />
                 {i === 0 && (
                   <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                     Main
