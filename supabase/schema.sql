@@ -62,6 +62,55 @@ drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
   on public.profiles for update using (auth.uid() = id);
 
+-- Verification columns: writable only by SQL editor/service role or the RPC.
+create or replace function public.protect_verification_columns()
+returns trigger language plpgsql security definer as $$
+begin
+  if auth.uid() is not null
+     and coalesce(current_setting('roomly.allow_verification_write', true), '') <> 'on'
+     and (new.verification_status is distinct from old.verification_status
+          or new.id_verified is distinct from old.id_verified
+          or new.verified_at is distinct from old.verified_at
+          or new.email_verified is distinct from old.email_verified
+          or new.phone_verified is distinct from old.phone_verified) then
+    raise exception 'verification fields can only be set by Roomly';
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists protect_verification_columns on public.profiles;
+create trigger protect_verification_columns
+  before update on public.profiles
+  for each row execute procedure public.protect_verification_columns();
+
+-- DEMO SEMANTICS: completing the /verify steps grants verified. Path B swaps
+-- the id_verified line for a verification-vendor webhook check. This function
+-- is the single place to harden.
+create or replace function public.complete_verification()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  u record;
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  select email_confirmed_at, phone_confirmed_at into u
+    from auth.users where id = auth.uid();
+  if u.email_confirmed_at is null then
+    raise exception 'confirm your email first';
+  end if;
+  perform set_config('roomly.allow_verification_write', 'on', true);
+  update public.profiles set
+    email_verified = true,
+    phone_verified = (u.phone_confirmed_at is not null),
+    id_verified = true,
+    verification_status = 'verified',
+    verified_at = now()
+  where id = auth.uid();
+end; $$;
+
+grant execute on function public.complete_verification() to authenticated;
+
 -- Auto-create a blank profile when someone signs up
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$

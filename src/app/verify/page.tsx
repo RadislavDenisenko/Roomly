@@ -34,24 +34,15 @@ export default function VerifyPage() {
     })();
   }, []);
 
-  async function persist(next: Steps) {
+  async function finishVerification(next: Steps) {
+    setSteps(next);
+    if (!(next.email && next.phone && next.id)) return; // not done yet — UI state only
     const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
-    const status = deriveVerificationStatus(next);
-    const { error } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      email_verified: next.email,
-      phone_verified: next.phone,
-      id_verified: next.id,
-      verification_status: status,
-      verified_at: status === "verified" ? new Date().toISOString() : null,
-    });
+    const { error } = await supabase.rpc("complete_verification");
     if (error) {
-      setNote("Couldn't save your progress — please try again.");
+      setNote("Couldn't finish verification — please try again.");
       return;
     }
-    setSteps(next);
   }
 
   async function sendPhoneCode() {
@@ -69,7 +60,7 @@ export default function VerifyPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: "phone_change" });
       if (error) { setNote("That code didn't match. Try again."); return; }
-      await persist({ ...steps, phone: true });
+      await finishVerification({ ...steps, phone: true });
     } finally {
       setBusy(false);
     }
@@ -79,7 +70,7 @@ export default function VerifyPage() {
     setBusy(true); setNote(null);
     try {
       await new Promise((r) => setTimeout(r, 600)); // placeholder for a real provider check
-      await persist({ ...steps, id: true });
+      await finishVerification({ ...steps, id: true });
     } finally {
       setBusy(false);
     }

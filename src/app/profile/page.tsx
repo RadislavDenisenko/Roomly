@@ -180,7 +180,6 @@ export default function ProfilePage() {
     }
     const { error } = await supabase.from("profiles").upsert({
       id: userData.user.id,
-      email_verified: !!userData.user.email_confirmed_at,
       full_name: form.full_name || null,
       age: form.age ? parseInt(form.age, 10) : null,
       city: form.city || null,
