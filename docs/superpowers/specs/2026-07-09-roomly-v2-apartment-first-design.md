@@ -235,8 +235,11 @@ Tabs (`PlacesNav`): **Swipe** (`/places`, default) · **Browse**
   patterns (`roomly-card-in`, active-press, reduced-motion). Deck order:
   curated first, then newest; excludes already-reacted places. No live
   people-counts on deck cards (perf); counts live on the detail page.
-- **Browse:** the grid now lists **places**; the save-heart stays, cards gain
-  Like/Pass actions writing `place_reactions`. Card rent = the place's
+- **Browse:** the grid now lists **places**; cards trade the save-heart for
+  Like/Pass actions writing `place_reactions` (a heart = like — saving a
+  *place* is just liking it). Unit-listing saves (`saved_listings`) stay
+  available from the listing rows inside place detail, feeding the Saved tab
+  unchanged. Card rent = the place's
   `rent_min–rent_max` range, falling back to its cheapest listing's rent.
   Filters become search + max-rent + curated-only + sort; the beds/baths
   filters are dropped at place level (beds/baths remain visible on the unit
