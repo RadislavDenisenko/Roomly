@@ -179,8 +179,9 @@ create policy "See own matches" on public.matches
   for select using (auth.uid() = user_a or auth.uid() = user_b);
 
 drop policy if exists "Update own matches" on public.matches;
-create policy "Update own matches" on public.matches
-  for update using (auth.uid() = user_a or auth.uid() = user_b);
+create policy "Unmatch own matches" on public.matches
+  for update using (auth.uid() = user_a or auth.uid() = user_b)
+  with check ((auth.uid() = user_a or auth.uid() = user_b) and status = 'unmatched');
 
 create or replace function public.handle_new_like()
 returns trigger language plpgsql security definer as $$
@@ -198,6 +199,22 @@ drop trigger if exists on_like_created on public.likes;
 create trigger on_like_created
   after insert on public.likes
   for each row execute procedure public.handle_new_like();
+
+create or replace function public.unmatch_user(other_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  update public.matches set status = 'unmatched'
+    where user_a = least(auth.uid(), other_id)
+      and user_b = greatest(auth.uid(), other_id);
+  delete from public.likes
+    where (liker_id = auth.uid() and liked_id = other_id)
+       or (liker_id = other_id and liked_id = auth.uid());
+end; $$;
+
+grant execute on function public.unmatch_user(uuid) to authenticated;
 
 create or replace function public.touch_match_on_message()
 returns trigger language plpgsql security definer as $$

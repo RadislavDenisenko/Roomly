@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { pickIcebreakers } from "@/lib/icebreakers";
-import { orderedPair } from "@/lib/matchUtil";
 
 type Msg = {
   id: number;
@@ -105,8 +104,7 @@ export default function ConversationPage() {
     setMenuOpen(false);
     setActionError(null);
     const supabase = createClient();
-    const [a, b] = orderedPair(me, otherId);
-    const { error } = await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
+    const { error } = await supabase.rpc("unmatch_user", { other_id: otherId });
     if (error) {
       setActionError("Could not unmatch — please try again.");
       return;
@@ -124,8 +122,7 @@ export default function ConversationPage() {
       setActionError("Could not block — please try again.");
       return;
     }
-    const [a, b] = orderedPair(me, otherId);
-    await supabase.from("matches").update({ status: "unmatched" }).eq("user_a", a).eq("user_b", b);
+    await supabase.rpc("unmatch_user", { other_id: otherId });
     router.push("/matches");
   }
 
