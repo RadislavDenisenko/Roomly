@@ -331,5 +331,6 @@ the demo places, one flagged resident) so the whole loop is walkable before
 
 ## 12. Open questions
 
-- Fate of unmerged `feat/photo-drag-reorder` (drag-to-reorder profile
-  photos): merge, park, or delete — Rad's call, not blocking this round.
+- ~~Fate of unmerged `feat/photo-drag-reorder`~~ — **Resolved 2026-07-09:**
+  Rad chose merge; merged into `feat/v2-apartment-first` (tests/lint/build
+  green), branch deleted.
