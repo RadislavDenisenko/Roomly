@@ -59,10 +59,13 @@ export default function TogetherPage() {
       }
 
       // mutual matches
-      const { data: sent } = await supabase.from("likes").select("liked_id").eq("liker_id", uid);
-      const { data: recv } = await supabase.from("likes").select("liker_id").eq("liked_id", uid);
-      const sentSet = new Set((sent ?? []).map((l: { liked_id: string }) => l.liked_id));
-      const mutualIds = (recv ?? []).map((l: { liker_id: string }) => l.liker_id).filter((x: string) => sentSet.has(x));
+      const { data: matchRows } = await supabase
+        .from("matches")
+        .select("user_a, user_b")
+        .eq("status", "active");
+      const mutualIds = (matchRows ?? []).map((m: { user_a: string; user_b: string }) =>
+        m.user_a === uid ? m.user_b : m.user_a,
+      );
       let people: Match[] = [];
       if (mutualIds.length) {
         const { data: profs } = await supabase

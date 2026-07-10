@@ -393,10 +393,8 @@ drop policy if exists "See own and matched reactions" on public.listing_reaction
 create policy "See own and matched reactions" on public.listing_reactions
   for select using (
     auth.uid() = user_id
-    or (
-      exists (select 1 from public.likes where liker_id = auth.uid() and liked_id = listing_reactions.user_id)
-      and exists (select 1 from public.likes where liker_id = listing_reactions.user_id and liked_id = auth.uid())
-    )
+    or (public.has_active_match(auth.uid(), user_id)
+        and not public.is_blocked_pair(auth.uid(), user_id))
   );
 
 drop policy if exists "React as yourself" on public.listing_reactions;
