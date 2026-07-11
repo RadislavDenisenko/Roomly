@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { mainPhoto } from "@/lib/photos";
 import { DottedTrail } from "@/components/MapMotif";
-import { ApartmentsNav } from "@/components/ApartmentsNav";
+import { PlacesNav } from "@/components/PlacesNav";
 import {
   type Listing,
   listingMainPhoto,
@@ -149,8 +149,8 @@ export default function TogetherPage() {
   return (
     <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
-        <Link href="/apartments" className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          ← Apartments
+        <Link href="/places/browse" className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+          ← Places
         </Link>
         <span className="roomly-mark h-8 w-8 text-sm">R</span>
       </header>
@@ -162,7 +162,7 @@ export default function TogetherPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           React to places with a matched roommate — the ones you both like land in your shared shortlist.
         </p>
-        <ApartmentsNav />
+        <PlacesNav />
         {demo && (
           <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
             ✨ Demo mode — {DEMO_MATCH.full_name} has already liked a couple of places. Like them too to see the shared shortlist fill up. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to go live.
@@ -224,7 +224,7 @@ export default function TogetherPage() {
                   {bothLiked.map((l) => (
                     <Link
                       key={l.id}
-                      href={`/apartments/${l.id}`}
+                      href={`/places/unit/${l.id}`}
                       className="roomly-card-in flex items-center gap-3 rounded-2xl border-2 border-violet-300 bg-violet-50/60 p-3 transition-transform hover:-translate-y-0.5 dark:border-violet-800 dark:bg-violet-950/30"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -251,7 +251,7 @@ export default function TogetherPage() {
                       key={l.id}
                       className="roomly-card-in flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/80 p-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80"
                     >
-                      <Link href={`/apartments/${l.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                      <Link href={`/places/unit/${l.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={listingMainPhoto(l)} alt={l.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
                         <div className="min-w-0">

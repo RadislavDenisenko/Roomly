@@ -100,12 +100,12 @@ export default function NewListingPage() {
     if (insErr) {
       setError(
         isMissingTable(insErr)
-          ? "Apartments aren't set up yet — run the latest supabase/schema.sql first."
+          ? "Places aren't set up yet — run the latest supabase/schema.sql first."
           : insErr.message,
       );
       return;
     }
-    router.push(`/apartments/${data.id}`);
+    router.push(`/places/unit/${data.id}`);
   }
 
   if (loading) return <Centered>Loading…</Centered>;
@@ -123,8 +123,8 @@ export default function NewListingPage() {
   return (
     <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
-        <Link href="/apartments" className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          ← Apartments
+        <Link href="/places/browse" className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+          ← Places
         </Link>
       </header>
 

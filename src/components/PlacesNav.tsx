@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/apartments", label: "Browse" },
-  { href: "/apartments/saved", label: "Saved" },
-  { href: "/apartments/together", label: "Together" },
+  { href: "/places", label: "Swipe" },
+  { href: "/places/browse", label: "Browse" },
+  { href: "/places/saved", label: "Saved" },
+  { href: "/places/together", label: "Together" },
 ];
 
-export function ApartmentsNav() {
+export function PlacesNav() {
   const pathname = usePathname();
   return (
     <nav className="mt-4 flex gap-2">

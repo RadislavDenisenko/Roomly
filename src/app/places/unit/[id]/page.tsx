@@ -114,8 +114,8 @@ export default function ListingDetailPage() {
     return (
       <Centered>
         <p className="text-zinc-600 dark:text-zinc-400">This place isn&apos;t available.</p>
-        <Link href="/apartments" className="roomly-btn mt-4 h-11 px-6 text-sm">
-          Back to apartments
+        <Link href="/places/browse" className="roomly-btn mt-4 h-11 px-6 text-sm">
+          Back to places
         </Link>
       </Centered>
     );
@@ -126,10 +126,10 @@ export default function ListingDetailPage() {
     <main className="roomly-page flex flex-1 flex-col">
       <header className="sticky top-0 z-10 mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-3">
         <Link
-          href="/apartments"
+          href="/places/browse"
           className="flex h-9 items-center gap-1 rounded-full bg-white/80 px-4 text-sm font-semibold text-zinc-700 backdrop-blur transition-colors hover:bg-white dark:bg-zinc-900/80 dark:text-zinc-200"
         >
-          ← Apartments
+          ← Places
         </Link>
         <button
           type="button"

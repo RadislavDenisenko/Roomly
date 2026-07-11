@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { DottedTrail } from "@/components/MapMotif";
-import { ApartmentsNav } from "@/components/ApartmentsNav";
+import { PlacesNav } from "@/components/PlacesNav";
 import {
   type Listing,
   listingMainPhoto,
@@ -83,7 +83,7 @@ export default function SavedPage() {
           <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
-        <Link href="/apartments/new" className="roomly-btn px-4 py-2 text-sm">
+        <Link href="/places/new" className="roomly-btn px-4 py-2 text-sm">
           Post a place
         </Link>
       </header>
@@ -95,7 +95,7 @@ export default function SavedPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Every apartment you&apos;ve hearted, in one spot.
         </p>
-        <ApartmentsNav />
+        <PlacesNav />
 
         {loading ? (
           <p className="mt-10 text-center text-sm text-zinc-500">Loading…</p>
@@ -110,7 +110,7 @@ export default function SavedPage() {
           <div className="mt-10 text-center">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No saved places yet.</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Tap the 🤍 on any place to keep it here.</p>
-            <Link href="/apartments" className="roomly-btn mt-6 h-11 px-6 text-sm">Browse apartments</Link>
+            <Link href="/places/browse" className="roomly-btn mt-6 h-11 px-6 text-sm">Browse places</Link>
           </div>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -119,11 +119,11 @@ export default function SavedPage() {
                 key={l.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => router.push(`/apartments/${l.id}`)}
+                onClick={() => router.push(`/places/unit/${l.id}`)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    router.push(`/apartments/${l.id}`);
+                    router.push(`/places/unit/${l.id}`);
                   }
                 }}
                 style={{ animationDelay: `${i * 50}ms` }}

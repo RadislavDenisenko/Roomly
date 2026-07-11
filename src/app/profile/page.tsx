@@ -281,7 +281,7 @@ export default function ProfilePage() {
         </Link>
 
         <Link
-          href="/apartments/saved"
+          href="/places/saved"
           className="mt-5 flex items-center justify-between rounded-2xl border border-zinc-200 bg-white/80 px-5 py-4 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
         >
           <span className="flex items-center gap-3">
