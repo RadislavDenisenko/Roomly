@@ -74,3 +74,54 @@ select s.id, m.id, 'Hey! Saw we matched and your place sounds great. When are yo
 from auth.users m join auth.users s on s.email = 'seed.alex@roomly.demo'
 where m.email = 'sample.maya@roomly.test'
   and not exists (select 1 from public.messages x where x.sender_id = s.id and x.recipient_id = m.id);
+
+-- 6) Curated Austin places directory (idempotent by name).
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'The Triangle', 'complex', 'Austin, TX', 'Triangle State', 1300, 2200, true,
+  array['https://picsum.photos/seed/roomly-place-triangle-a/800/1000','https://picsum.photos/seed/roomly-place-triangle-b/800/1000']
+where not exists (select 1 from public.places where name = 'The Triangle');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'East 6th Lofts', 'complex', 'Austin, TX', 'East Austin', 1250, 2100, true,
+  array['https://picsum.photos/seed/roomly-place-east6th-a/800/1000','https://picsum.photos/seed/roomly-place-east6th-b/800/1000']
+where not exists (select 1 from public.places where name = 'East 6th Lofts');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Zilker Terrace', 'complex', 'Austin, TX', 'Zilker', 1400, 2400, true,
+  array['https://picsum.photos/seed/roomly-place-zilker-a/800/1000','https://picsum.photos/seed/roomly-place-zilker-b/800/1000']
+where not exists (select 1 from public.places where name = 'Zilker Terrace');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Hyde Park Commons', 'complex', 'Austin, TX', 'Hyde Park', 1100, 1800, true,
+  array['https://picsum.photos/seed/roomly-place-hydepark-a/800/1000','https://picsum.photos/seed/roomly-place-hydepark-b/800/1000']
+where not exists (select 1 from public.places where name = 'Hyde Park Commons');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Riverside Landing', 'complex', 'Austin, TX', 'Riverside', 950, 1600, true,
+  array['https://picsum.photos/seed/roomly-place-riverside-a/800/1000','https://picsum.photos/seed/roomly-place-riverside-b/800/1000']
+where not exists (select 1 from public.places where name = 'Riverside Landing');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Domain Northside Flats', 'complex', 'Austin, TX', 'The Domain', 1500, 2600, true,
+  array['https://picsum.photos/seed/roomly-place-domain-a/800/1000','https://picsum.photos/seed/roomly-place-domain-b/800/1000']
+where not exists (select 1 from public.places where name = 'Domain Northside Flats');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Aldrich House', 'complex', 'Austin, TX', 'Mueller', 1350, 2300, true,
+  array['https://picsum.photos/seed/roomly-place-aldrich-a/800/1000','https://picsum.photos/seed/roomly-place-aldrich-b/800/1000']
+where not exists (select 1 from public.places where name = 'Aldrich House');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'South Congress Studios', 'complex', 'Austin, TX', 'South Congress', 1200, 1900, true,
+  array['https://picsum.photos/seed/roomly-place-soco-a/800/1000','https://picsum.photos/seed/roomly-place-soco-b/800/1000']
+where not exists (select 1 from public.places where name = 'South Congress Studios');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Barton Creek Villas', 'complex', 'Austin, TX', 'Barton Hills', 1450, 2500, true,
+  array['https://picsum.photos/seed/roomly-place-bartoncreek-a/800/1000','https://picsum.photos/seed/roomly-place-bartoncreek-b/800/1000']
+where not exists (select 1 from public.places where name = 'Barton Creek Villas');
+
+insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, curated, photos)
+select 'Cherrywood Court', 'house', 'Austin, TX', 'Cherrywood', 1000, 1700, true,
+  array['https://picsum.photos/seed/roomly-place-cherrywood-a/800/1000','https://picsum.photos/seed/roomly-place-cherrywood-b/800/1000']
+where not exists (select 1 from public.places where name = 'Cherrywood Court');

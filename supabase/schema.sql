@@ -455,3 +455,77 @@ select u.id, 'Cozy room in shared house',
 from auth.users u
 where u.email = 'sample.riley@roomly.test'
   and not exists (select 1 from public.listings where title = 'Cozy room in shared house');
+
+-- Places (complex/building level; the unit people match around) -------------
+create table if not exists public.places (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  created_by uuid references auth.users on delete set null,
+  name text not null,
+  kind text not null default 'complex' check (kind in ('complex','building','house','other')),
+  city text,
+  neighborhood text,
+  address text,
+  rent_min int,
+  rent_max int,
+  photos text[] default '{}',
+  website text,
+  curated boolean default false,
+  sponsored boolean default false -- dormant monetization flag, unused in UI
+);
+alter table public.places enable row level security;
+
+drop policy if exists "Authenticated users can view places" on public.places;
+create policy "Authenticated users can view places"
+  on public.places for select using (auth.role() = 'authenticated');
+drop policy if exists "Users can add places" on public.places;
+create policy "Users can add places"
+  on public.places for insert with check (
+    auth.uid() = created_by and curated = false and sponsored = false
+  );
+drop policy if exists "Creators can edit their places" on public.places;
+create policy "Creators can edit their places"
+  on public.places for update using (created_by = auth.uid() and curated = false)
+  with check (curated = false and sponsored = false);
+
+alter table public.listings
+  add column if not exists place_id uuid references public.places;
+
+alter table public.profiles
+  add column if not exists place_id uuid references public.places,
+  add column if not exists looking_for_roommate boolean default false,
+  add column if not exists people_visible boolean default true;
+
+-- Place reactions: own rows ONLY. Cross-user pools go through RPCs (Task 10).
+create table if not exists public.place_reactions (
+  user_id    uuid not null references auth.users on delete cascade,
+  place_id   uuid not null references public.places on delete cascade,
+  reaction   text not null check (reaction in ('like','pass')),
+  created_at timestamptz default now(),
+  primary key (user_id, place_id)
+);
+alter table public.place_reactions enable row level security;
+
+drop policy if exists "Own place reactions" on public.place_reactions;
+create policy "Own place reactions" on public.place_reactions
+  for select using (auth.uid() = user_id);
+drop policy if exists "React to places as yourself" on public.place_reactions;
+create policy "React to places as yourself" on public.place_reactions
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "Update own place reactions" on public.place_reactions;
+create policy "Update own place reactions" on public.place_reactions
+  for update using (auth.uid() = user_id);
+drop policy if exists "Delete own place reactions" on public.place_reactions;
+create policy "Delete own place reactions" on public.place_reactions
+  for delete using (auth.uid() = user_id);
+
+-- Backfill: every orphan listing gets its own auto place (idempotent).
+insert into public.places (name, kind, city, neighborhood, curated, created_by)
+select l.title, 'other', l.city, l.neighborhood, false, l.owner_id
+from public.listings l
+where l.place_id is null
+  and not exists (select 1 from public.places p where p.name = l.title);
+
+update public.listings l set place_id = p.id
+from public.places p
+where l.place_id is null and p.name = l.title;

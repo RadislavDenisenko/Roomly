@@ -11,6 +11,7 @@ export type Listing = {
   available_from: string | null;
   photos: string[] | null;
   verified: boolean | null;
+  place_id: string | null;
   created_at?: string;
 };
 
@@ -53,11 +54,11 @@ export function formatAvailable(date: string | null): string {
 // is run). Lets the whole apartments feature be browsed/filtered immediately;
 // real data takes over automatically once the listings table is created.
 export const DEMO_LISTINGS: Listing[] = [
-  { id: "demo-1", owner_id: "demo-owner-1", title: "Sunny 2BR near campus", description: "Bright corner unit with big windows, dishwasher, and a small balcony. Walkable to campus, coffee, and the green belt.", city: "Austin, TX", neighborhood: "Hyde Park", rent: 1450, bedrooms: 2, bathrooms: 1, available_from: "2026-08-01", photos: null, verified: true, created_at: "2026-06-10T00:00:00Z" },
-  { id: "demo-2", owner_id: "demo-owner-2", title: "Modern loft downtown", description: "Open-plan loft with exposed brick, in-unit laundry, and a rooftop pool. Steps from restaurants and transit.", city: "Austin, TX", neighborhood: "Downtown", rent: 1900, bedrooms: 1, bathrooms: 1, available_from: "2026-07-15", photos: null, verified: true, created_at: "2026-06-09T00:00:00Z" },
-  { id: "demo-3", owner_id: "demo-owner-3", title: "Cozy room in shared house", description: "Furnished private room in a friendly 3-person house. Big backyard, fast wifi, and a cat named Biscuit.", city: "Austin, TX", neighborhood: "East Side", rent: 850, bedrooms: 1, bathrooms: 1, available_from: "2026-09-01", photos: null, verified: false, created_at: "2026-06-08T00:00:00Z" },
-  { id: "demo-4", owner_id: "demo-owner-4", title: "Bright 3BR with a yard", description: "Roomy house share with a fenced yard, gas range, and a covered porch. Great for a small crew.", city: "Austin, TX", neighborhood: "Mueller", rent: 2400, bedrooms: 3, bathrooms: 2, available_from: "2026-08-15", photos: null, verified: true, created_at: "2026-06-07T00:00:00Z" },
-  { id: "demo-5", owner_id: "demo-owner-5", title: "Studio by the lake", description: "Compact studio with lake views, a Murphy bed, and a tiny but mighty kitchen. Utilities included.", city: "Austin, TX", neighborhood: "Zilker", rent: 1200, bedrooms: null, bathrooms: 1, available_from: null, photos: null, verified: false, created_at: "2026-06-06T00:00:00Z" },
+  { id: "demo-1", owner_id: "demo-owner-1", title: "Sunny 2BR near campus", description: "Bright corner unit with big windows, dishwasher, and a small balcony. Walkable to campus, coffee, and the green belt.", city: "Austin, TX", neighborhood: "Hyde Park", rent: 1450, bedrooms: 2, bathrooms: 1, available_from: "2026-08-01", photos: null, verified: true, place_id: null, created_at: "2026-06-10T00:00:00Z" },
+  { id: "demo-2", owner_id: "demo-owner-2", title: "Modern loft downtown", description: "Open-plan loft with exposed brick, in-unit laundry, and a rooftop pool. Steps from restaurants and transit.", city: "Austin, TX", neighborhood: "Downtown", rent: 1900, bedrooms: 1, bathrooms: 1, available_from: "2026-07-15", photos: null, verified: true, place_id: null, created_at: "2026-06-09T00:00:00Z" },
+  { id: "demo-3", owner_id: "demo-owner-3", title: "Cozy room in shared house", description: "Furnished private room in a friendly 3-person house. Big backyard, fast wifi, and a cat named Biscuit.", city: "Austin, TX", neighborhood: "East Side", rent: 850, bedrooms: 1, bathrooms: 1, available_from: "2026-09-01", photos: null, verified: false, place_id: null, created_at: "2026-06-08T00:00:00Z" },
+  { id: "demo-4", owner_id: "demo-owner-4", title: "Bright 3BR with a yard", description: "Roomy house share with a fenced yard, gas range, and a covered porch. Great for a small crew.", city: "Austin, TX", neighborhood: "Mueller", rent: 2400, bedrooms: 3, bathrooms: 2, available_from: "2026-08-15", photos: null, verified: true, place_id: null, created_at: "2026-06-07T00:00:00Z" },
+  { id: "demo-5", owner_id: "demo-owner-5", title: "Studio by the lake", description: "Compact studio with lake views, a Murphy bed, and a tiny but mighty kitchen. Utilities included.", city: "Austin, TX", neighborhood: "Zilker", rent: 1200, bedrooms: null, bathrooms: 1, available_from: null, photos: null, verified: false, place_id: null, created_at: "2026-06-06T00:00:00Z" },
 ];
 
 // In demo mode (tables not created yet) saved places are kept in localStorage
@@ -88,6 +89,7 @@ export function isMissingTable(error: { message?: string; code?: string } | null
   return (
     error.code === "42P01" || // postgres: relation does not exist
     error.code === "PGRST205" || // postgrest: table not in schema cache
+    error.code === "PGRST202" || // postgrest: function not found in schema cache
     msg.includes("does not exist") ||
     msg.includes("schema cache") ||
     msg.includes("could not find the table")
