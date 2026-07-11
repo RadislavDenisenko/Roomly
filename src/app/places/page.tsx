@@ -151,7 +151,7 @@ export default function PlacesSwipePage() {
               </Link>
               <Link
                 href="/people"
-                className="flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+                className="flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 See people
               </Link>

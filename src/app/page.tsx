@@ -31,19 +31,19 @@ export default function Home() {
           ✓ Every profile verified — free, for everyone
         </span>
         <h1 className="text-4xl font-black leading-[1.05] tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-6xl">
-          Find your{" "}
+          Swipe your{" "}
           <span className="bg-gradient-to-r from-fuchsia-500 to-violet-600 bg-clip-text text-transparent">
-            person
-          </span>
-          .<br /> Then find your{" "}
-          <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
             place
+          </span>
+          .<br /> Meet your{" "}
+          <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
+            people
           </span>
           .
         </h1>
         <p className="mt-5 max-w-xl text-lg font-medium leading-8 text-zinc-600 dark:text-zinc-400">
-          Swipe verified roommates, match on what actually matters, then walk into
-          a new home together. No scammers, no fake listings — just real people.
+          Swipe real apartments in your city. Liking one unlocks the verified people
+          who want it too — match, chat, then go find a home together.
         </p>
 
         <HouseScene />
@@ -63,9 +63,9 @@ export default function Home() {
       </section>
 
       <section className="relative z-10 mx-auto grid w-full max-w-4xl gap-4 px-6 pb-16 sm:grid-cols-3">
-        <Feature emoji="🛡️" title="Verified profiles" desc="Everyone is confirmed — the thing other apps make you pay for." color="from-fuchsia-500 to-pink-500" />
-        <Feature emoji="💜" title="Real compatibility" desc="Matched on budget, schedule, and cleanliness — not just looks." color="from-violet-500 to-indigo-500" />
-        <Feature emoji="🎒" title="Find a place together" desc="Match first, then go find a home as a team." color="from-orange-400 to-pink-500" />
+        <Feature emoji="🏠" title="Find an apartment" desc="Real, curated listings in your city — no scraped fakes, no dead links." color="from-orange-400 to-pink-500" />
+        <Feature emoji="👋" title="See who else wants it" desc="Liking a place unlocks the verified people looking there too." color="from-violet-500 to-indigo-500" />
+        <Feature emoji="🛡️" title="Match, verified" desc="Everyone is confirmed — the thing other apps make you pay for." color="from-fuchsia-500 to-pink-500" />
       </section>
     </main>
   );

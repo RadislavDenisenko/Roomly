@@ -1,11 +1,14 @@
 # Roomly
 
-**Find a roommate you can actually trust — then find a place together.**
+**Swipe real apartments. Meet the verified people who want them too.**
 
-Roomly is a trust-first roommate-matching web app. Every profile is verified, you
-match on what actually matters (budget, schedule, cleanliness, lifestyle), and once
-you match you can chat and hunt for apartments together. No scammers, no fake
-listings — the thing other apps make you pay for is free here.
+Roomly is a trust-first, apartment-first roommate-matching web app. You start by
+swiping real places in your city; liking one unlocks the people who liked it too
+(and anyone already living there looking for a roommate). Every profile is
+verified, matches are ranked on what actually matters (budget, schedule,
+cleanliness, lifestyle), and once you match you can chat and hunt for apartments
+together. No scammers, no fake listings — the thing other apps make you pay for
+is free here.
 
 > **Live demo:** _add your Vercel URL here after deploying_
 > Click **"Try the demo"** on the landing page — it drops you straight into a
@@ -23,11 +26,12 @@ in the database, not just the UI:
 
 ## Features
 
-- **Verified-only matching** — a 3-step identity flow (email, phone, ID) and a verified gate over discovery.
+- **Places first** — swipe a curated Austin directory of real apartments/complexes (plus owner-posted listings), browse and filter, save units.
+- **People pools** — liking a place unlocks who else wants it: co-seekers ranked by compatibility, and residents who already live there and are looking for a roommate. Empty pools fall back to nearby, then city-wide.
+- **Verified-only matching** — a 3-step identity flow (email, phone, ID) and a verified gate over the People pools.
 - **Compatibility scoring** — ranked matches with "why you match" reasons (cleanliness, sleep schedule, smoking, pets, guests, budget overlap, city) plus hard dealbreaker filters.
-- **Swipe-style discovery** — a clean, progressively-disclosed card (one headline reason up front, full profile on tap).
 - **Matches & messaging** — real match records, message previews, "new match" prompts, tappable icebreakers, and unmatch / block / report safety actions.
-- **Apartments** — in-app verified listings (browse, filter, save) and a collaborative "search together" mode for matched roommates.
+- **Together** — a collaborative shared shortlist for matched roommates hunting for a place as a team.
 - **Multi-photo profiles** and a unified fuchsia→violet design system.
 
 ## Tech stack
