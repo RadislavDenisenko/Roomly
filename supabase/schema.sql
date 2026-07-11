@@ -144,6 +144,25 @@ drop policy if exists "Remove own likes" on public.likes;
 create policy "Remove own likes" on public.likes
   for delete using (auth.uid() = liker_id);
 
+-- People passes (so passed profiles stop reappearing) -----------------------
+create table if not exists public.passes (
+  passer_id  uuid not null references auth.users on delete cascade,
+  passed_id  uuid not null references auth.users on delete cascade,
+  created_at timestamptz default now(),
+  primary key (passer_id, passed_id)
+);
+alter table public.passes enable row level security;
+
+drop policy if exists "See own passes" on public.passes;
+create policy "See own passes" on public.passes
+  for select using (auth.uid() = passer_id);
+drop policy if exists "Pass as yourself" on public.passes;
+create policy "Pass as yourself" on public.passes
+  for insert with check (auth.uid() = passer_id);
+drop policy if exists "Remove own passes" on public.passes;
+create policy "Remove own passes" on public.passes
+  for delete using (auth.uid() = passer_id);
+
 -- Messages -----------------------------------------------------------------
 -- You can only message someone you have mutually matched with.
 create table if not exists public.messages (

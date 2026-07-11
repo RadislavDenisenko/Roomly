@@ -134,6 +134,9 @@ export default function DiscoverPage() {
       const { data: myLikes } = await supabase.from("likes").select("liked_id").eq("liker_id", uid);
       const liked = new Set((myLikes ?? []).map((l: { liked_id: string }) => l.liked_id));
 
+      const { data: myPasses } = await supabase.from("passes").select("passed_id").eq("passer_id", uid);
+      const passed = new Set((myPasses ?? []).map((p: { passed_id: string }) => p.passed_id));
+
       const { data: others } = await supabase
         .from("profiles")
         .select("*")
@@ -144,6 +147,7 @@ export default function DiscoverPage() {
         if (!isVerified(p)) return false;
         if (blocked.has(p.id)) return false;
         if (liked.has(p.id)) return false;
+        if (passed.has(p.id)) return false;
         if (me.db_nonsmokers_only && p.smoking) return false;
         if (me.db_no_pet_owners && p.pets) return false;
         if (me.db_budget_overlap_only && !budgetsOverlap(me, p)) return false;
@@ -170,6 +174,13 @@ export default function DiscoverPage() {
       .maybeSingle();
     if (back) setMatch(them);
     else setIndex((i) => i + 1);
+  }
+
+  async function onPass(them: Profile) {
+    setIndex((i) => i + 1);
+    if (!myId) return;
+    const supabase = createClient();
+    await supabase.from("passes").upsert({ passer_id: myId, passed_id: them.id });
   }
 
   if (loading) return <Centered>Finding your matches…</Centered>;
@@ -292,7 +303,7 @@ export default function DiscoverPage() {
 
             <div className="mt-6 flex w-full gap-4">
               <button
-                onClick={() => setIndex((i) => i + 1)}
+                onClick={() => onPass(current.profile)}
                 className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Pass
@@ -320,7 +331,7 @@ export default function DiscoverPage() {
                 type="button"
                 onClick={() => {
                   setShowDetail(false);
-                  setIndex((i) => i + 1);
+                  onPass(current.profile);
                 }}
                 className="flex h-12 flex-1 items-center justify-center rounded-full border border-zinc-300 text-sm font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
