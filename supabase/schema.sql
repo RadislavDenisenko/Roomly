@@ -529,3 +529,94 @@ where l.place_id is null
 update public.listings l set place_id = p.id
 from public.places p
 where l.place_id is null and p.name = l.title;
+
+-- People pools: the ONLY cross-user window into place_reactions. -----------
+create or replace function public.people_for_place(pid uuid)
+returns table (
+  id uuid, full_name text, age int, city text, bio text, avatar_url text,
+  photos text[], budget_min int, budget_max int, cleanliness int,
+  sleep_schedule text, smoking boolean, pets boolean, guests text,
+  verification_status text, member_group text
+) language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then return; end if;
+  if (select p.verification_status from public.profiles p where p.id = auth.uid()) <> 'verified' then
+    return;
+  end if;
+  -- eligible = caller liked this place, or lives there
+  if not exists (select 1 from public.place_reactions r
+                 where r.user_id = auth.uid() and r.place_id = pid and r.reaction = 'like')
+     and not exists (select 1 from public.profiles p
+                     where p.id = auth.uid() and p.place_id = pid) then
+    return;
+  end if;
+  return query
+  select p.id, p.full_name, p.age, p.city, p.bio, p.avatar_url, p.photos,
+         p.budget_min, p.budget_max, p.cleanliness, p.sleep_schedule,
+         p.smoking, p.pets, p.guests, p.verification_status,
+         case when p.place_id = pid and p.looking_for_roommate
+              then 'resident' else 'seeker' end as member_group
+  from public.profiles p
+  where p.id <> auth.uid()
+    and p.verification_status = 'verified'
+    and not public.is_blocked_pair(auth.uid(), p.id)
+    and not exists (select 1 from public.likes l
+                    where l.liker_id = auth.uid() and l.liked_id = p.id)
+    and not exists (select 1 from public.passes x
+                    where x.passer_id = auth.uid() and x.passed_id = p.id)
+    and (
+      (p.people_visible and exists (select 1 from public.place_reactions r
+                                    where r.user_id = p.id and r.place_id = pid
+                                      and r.reaction = 'like'))
+      or (p.place_id = pid and p.looking_for_roommate)
+    );
+end; $$;
+
+grant execute on function public.people_for_place(uuid) to authenticated;
+
+create or replace function public.people_for_area(p_city text, p_neighborhood text)
+returns table (
+  id uuid, full_name text, age int, city text, bio text, avatar_url text,
+  photos text[], budget_min int, budget_max int, cleanliness int,
+  sleep_schedule text, smoking boolean, pets boolean, guests text,
+  verification_status text, member_group text
+) language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then return; end if;
+  if (select p.verification_status from public.profiles p where p.id = auth.uid()) <> 'verified' then
+    return;
+  end if;
+  -- eligible = caller has a like on ANY place in this city (+ neighborhood if given)
+  if not exists (
+    select 1 from public.place_reactions r
+    join public.places pl on pl.id = r.place_id
+    where r.user_id = auth.uid() and r.reaction = 'like'
+      and pl.city = p_city
+      and (p_neighborhood is null or pl.neighborhood = p_neighborhood)
+  ) then
+    return;
+  end if;
+  return query
+  select p.id, p.full_name, p.age, p.city, p.bio, p.avatar_url, p.photos,
+         p.budget_min, p.budget_max, p.cleanliness, p.sleep_schedule,
+         p.smoking, p.pets, p.guests, p.verification_status,
+         'seeker' as member_group
+  from public.profiles p
+  where p.id <> auth.uid()
+    and p.verification_status = 'verified'
+    and p.people_visible
+    and not public.is_blocked_pair(auth.uid(), p.id)
+    and not exists (select 1 from public.likes l
+                    where l.liker_id = auth.uid() and l.liked_id = p.id)
+    and not exists (select 1 from public.passes x
+                    where x.passer_id = auth.uid() and x.passed_id = p.id)
+    and exists (
+      select 1 from public.place_reactions r
+      join public.places pl on pl.id = r.place_id
+      where r.user_id = p.id and r.reaction = 'like'
+        and pl.city = p_city
+        and (p_neighborhood is null or pl.neighborhood = p_neighborhood)
+    );
+end; $$;
+
+grant execute on function public.people_for_area(text, text) to authenticated;

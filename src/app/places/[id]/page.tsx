@@ -20,6 +20,7 @@ import {
   DEMO_LISTINGS,
   getDemoSaved,
   setDemoSaved,
+  isMissingTable,
 } from "@/lib/listings";
 
 // Demo listings have no place_id, so in demo mode we hand-assign a coherent
@@ -42,6 +43,8 @@ export default function PlaceDetailPage() {
   const [demo, setDemo] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [peopleCount, setPeopleCount] = useState<number | null>(null);
+  const [peopleCountLoading, setPeopleCountLoading] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -96,6 +99,30 @@ export default function PlaceDetailPage() {
       setLoading(false);
     })();
   }, [id]);
+
+  useEffect(() => {
+    (async () => {
+      if (myReaction !== "like" || !place) {
+        setPeopleCount(null);
+        return;
+      }
+      if (demo) {
+        // Demo mode: curated demo places show a couple of scripted co-seekers.
+        setPeopleCount(place.curated ? 2 : 0);
+        return;
+      }
+      if (!myId) return;
+      setPeopleCountLoading(true);
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("people_for_place", { pid: place.id });
+      if (error) {
+        setPeopleCount(isMissingTable(error) ? (place.curated ? 2 : 0) : 0);
+      } else {
+        setPeopleCount((data ?? []).length);
+      }
+      setPeopleCountLoading(false);
+    })();
+  }, [myReaction, place, demo, myId]);
 
   async function react(reaction: "like" | "pass") {
     if (!place) return;
@@ -247,12 +274,26 @@ export default function PlaceDetailPage() {
           </button>
         </div>
 
-        {/* People teaser (static until Task 10 wires the real pool) */}
+        {/* People teaser: unlocks once you like the place. */}
         <section id="people-teaser" className="mt-6 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
-          {myReaction === "like" ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Checking who else wants this place…</p>
-          ) : (
+          {myReaction !== "like" ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">🔒 Like this place to see who else wants it.</p>
+          ) : peopleCountLoading || peopleCount === null ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Checking who else wants this place…</p>
+          ) : peopleCount === 0 ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No one else has swiped here yet — you&apos;re early.
+            </p>
+          ) : (
+            <Link
+              href="/people"
+              className="flex items-center justify-between text-sm font-semibold text-violet-600 hover:underline dark:text-violet-400"
+            >
+              <span>
+                {peopleCount} {peopleCount === 1 ? "person" : "people"} also want this place
+              </span>
+              <span aria-hidden="true">→</span>
+            </Link>
           )}
         </section>
 
