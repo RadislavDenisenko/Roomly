@@ -285,23 +285,25 @@ export default function PeoplePage() {
 
       <div className="relative mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
         {match && (
-          <div className="fixed inset-0 z-30 flex flex-col items-center justify-center bg-emerald-600/95 px-8 text-center text-white backdrop-blur">
-            <p className="text-sm font-semibold uppercase tracking-widest text-emerald-100">{"It's a match!"}</p>
-            <Avatar name={match.full_name} url={mainPhoto(match)} large />
-            <h2 className="mt-4 text-2xl font-bold">You and {match.full_name} liked each other 🎉</h2>
-            <p className="mt-2 max-w-xs text-sm text-emerald-100">Start the conversation from your Matches.</p>
-            <Link href="/matches" className="mt-6 flex h-12 w-full max-w-xs items-center justify-center rounded-full bg-white text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
-              See your matches
-            </Link>
-            <button
-              onClick={() => {
-                removePerson(match.id);
-                setMatch(null);
-              }}
-              className="mt-3 text-sm font-medium text-emerald-100 underline"
-            >
-              Keep browsing
-            </button>
+          <div className="roomly-fade-in fixed inset-0 z-30 flex flex-col items-center justify-center bg-emerald-600/95 px-8 text-center text-white backdrop-blur">
+            <div className="roomly-match-in flex flex-col items-center">
+              <p className="text-sm font-semibold uppercase tracking-widest text-emerald-100">{"It's a match!"}</p>
+              <Avatar name={match.full_name} url={mainPhoto(match)} large />
+              <h2 className="mt-4 text-2xl font-bold">You and {match.full_name} liked each other 🎉</h2>
+              <p className="mt-2 max-w-xs text-sm text-emerald-100">Start the conversation from your Matches.</p>
+              <Link href="/matches" className="mt-6 flex h-12 w-full max-w-xs items-center justify-center rounded-full bg-white text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                See your matches
+              </Link>
+              <button
+                onClick={() => {
+                  removePerson(match.id);
+                  setMatch(null);
+                }}
+                className="mt-3 text-sm font-medium text-emerald-100 underline"
+              >
+                Keep browsing
+              </button>
+            </div>
           </div>
         )}
 

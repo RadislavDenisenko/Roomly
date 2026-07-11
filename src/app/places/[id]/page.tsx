@@ -326,7 +326,7 @@ export default function PlaceDetailPage() {
                 <Link
                   key={l.id}
                   href={`/places/unit/${l.id}`}
-                  className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/80 p-3 backdrop-blur transition-colors hover:border-violet-300 dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-violet-700"
+                  className="roomly-card-in roomly-tilt flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/80 p-3 backdrop-blur transition-[color,background-color,border-color,transform] duration-150 ease-out hover:border-violet-300 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-violet-700"
                 >
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-200 dark:bg-zinc-800">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
