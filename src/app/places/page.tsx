@@ -9,8 +9,6 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { isMissingTable } from "@/lib/listings";
 import { peopleConsentSeen, markPeopleConsentSeen } from "@/lib/consent";
 import { prefersReducedMotion } from "@/lib/motion";
-
-const FOLD_EXIT_MS = 320;
 import {
   type Place,
   placeMainPhoto,
@@ -21,6 +19,8 @@ import {
   setDemoPlaceReactions,
   placeKindLabel,
 } from "@/lib/places";
+
+const FOLD_EXIT_MS = 320;
 
 export default function PlacesSwipePage() {
   const router = useRouter();
