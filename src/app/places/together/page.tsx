@@ -181,8 +181,8 @@ export default function TogetherPage() {
         ) : matches.length === 0 ? (
           <div className="mt-10 text-center">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No roommates to search with yet.</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Match with someone in Discover, then come back to hunt together.</p>
-            <Link href="/discover" className="roomly-btn mt-6 h-11 px-6 text-sm">Go to Discover</Link>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Match with someone in People, then come back to hunt together.</p>
+            <Link href="/people" className="roomly-btn mt-6 h-11 px-6 text-sm">Go to People</Link>
           </div>
         ) : (
           <>

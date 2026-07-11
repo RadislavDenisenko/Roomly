@@ -73,8 +73,8 @@ export default function MatchesPage() {
           <Link href="/places" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
             Places
           </Link>
-          <Link href="/discover" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Discover
+          <Link href="/people" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            People
           </Link>
         </nav>
       </header>
@@ -97,9 +97,9 @@ export default function MatchesPage() {
         ) : rows.length === 0 ? (
           <div className="mt-10 text-center">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No matches yet.</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Like people in Discover — when they like you back, they show up here.</p>
-            <Link href="/discover" className="roomly-btn mt-6 h-11 px-6 text-sm">
-              Go to Discover
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Like people in People — when they like you back, they show up here.</p>
+            <Link href="/people" className="roomly-btn mt-6 h-11 px-6 text-sm">
+              Go to People
             </Link>
           </div>
         ) : (

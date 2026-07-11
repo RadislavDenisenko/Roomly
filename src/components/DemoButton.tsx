@@ -24,7 +24,7 @@ export function DemoButton({ className }: { className?: string }) {
       router.push("/login");
       return;
     }
-    router.push("/discover");
+    router.push("/places");
   }
 
   return (

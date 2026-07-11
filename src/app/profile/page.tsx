@@ -244,10 +244,10 @@ export default function ProfilePage() {
           </span>
         </Link>
         <Link
-          href="/discover"
+          href="/people"
           className="roomly-btn px-4 py-2 text-sm"
         >
-          Discover →
+          People →
         </Link>
       </header>
 

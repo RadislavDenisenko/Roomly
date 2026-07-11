@@ -94,8 +94,8 @@ export default function VerifyPage() {
           <span className="roomly-mark h-8 w-8 text-sm">R</span>
           <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
         </Link>
-        <Link href="/discover" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
-          Discover
+        <Link href="/people" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+          People
         </Link>
       </header>
 
@@ -145,7 +145,7 @@ export default function VerifyPage() {
         {status === "verified" && (
           <div className="mt-6 rounded-2xl bg-green-50 px-4 py-4 text-center dark:bg-green-950/40">
             <p className="font-semibold text-green-700 dark:text-green-300">You&apos;re verified! 🎉</p>
-            <Link href="/discover" className="roomly-btn mt-3 inline-flex h-11 items-center px-6 text-sm">Start matching</Link>
+            <Link href="/places" className="roomly-btn mt-3 inline-flex h-11 items-center px-6 text-sm">Start matching</Link>
           </div>
         )}
       </div>
