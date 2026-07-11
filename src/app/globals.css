@@ -88,10 +88,13 @@ body {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-8px); }
 }
-/* Cards slide up + fade in as they appear (used for the swipe card and match rows) */
+/* Cards fold up into place as they appear — a slight rotateX "page settling
+   flat" read, not just a slide (used for the swipe card, grid cards, and
+   match/shortlist rows). Needs a perspective, supplied inline so it works
+   regardless of the parent's stacking context. */
 @keyframes roomly-card-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: perspective(900px) rotateX(-10deg) translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: perspective(900px) rotateX(0deg) translateY(0) scale(1); }
 }
 /* Verified badge pops in with a tiny overshoot so it reads as a "stamp" */
 @keyframes roomly-badge-pop {
@@ -99,14 +102,26 @@ body {
   60%  { opacity: 1; transform: scale(1.08); }
   100% { transform: scale(1); }
 }
-/* Full-profile sheet: dim backdrop fades, sheet slides up */
+/* Full-profile sheet: dim backdrop fades, sheet folds down into place like a
+   page settling flat (hinged at the top edge). */
 @keyframes roomly-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 @keyframes roomly-sheet-in {
-  from { opacity: 0; transform: translateY(40px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: perspective(1200px) rotateX(-6deg) translateY(40px); }
+  to   { opacity: 1; transform: perspective(1200px) rotateX(0deg) translateY(0); }
+}
+/* Deck cards fold away like a page turning, hinged on the trailing edge, as
+   the next card (already peeking behind, see .roomly-deck-peek) settles
+   forward to take its place. */
+@keyframes roomly-fold-exit-right {
+  from { transform: perspective(1000px) rotateY(0deg) translateX(0) translateZ(0); opacity: 1; }
+  to   { transform: perspective(1000px) rotateY(-105deg) translateX(60%) translateZ(-80px); opacity: 0; }
+}
+@keyframes roomly-fold-exit-left {
+  from { transform: perspective(1000px) rotateY(0deg) translateX(0) translateZ(0); opacity: 1; }
+  to   { transform: perspective(1000px) rotateY(105deg) translateX(-60%) translateZ(-80px); opacity: 0; }
 }
 
 .roomly-walker { animation: roomly-walk 7s ease-in-out infinite; }
@@ -119,16 +134,77 @@ body {
 .roomly-card-in { animation: roomly-card-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .roomly-badge   { animation: roomly-badge-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .roomly-fade-in { animation: roomly-fade-in 0.2s ease-out both; }
-.roomly-sheet-in { animation: roomly-sheet-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.roomly-sheet-in { animation: roomly-sheet-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.roomly-fold-exit-right { animation: roomly-fold-exit-right 320ms cubic-bezier(0.77, 0, 0.175, 1) both; transform-origin: left center; pointer-events: none; }
+.roomly-fold-exit-left  { animation: roomly-fold-exit-left  320ms cubic-bezier(0.77, 0, 0.175, 1) both; transform-origin: right center; pointer-events: none; }
+
+/* The next card in a swipe deck, resting behind + below the top card, tilted
+   back slightly for real depth. Becomes the top card (and gets .roomly-card-in)
+   once the current one folds away. */
+.roomly-deck-peek {
+  transform: perspective(900px) translateY(16px) scale(0.94) rotateX(4deg);
+  transform-origin: bottom center;
+  opacity: 0.55;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .roomly-walker, .roomly-bob, .roomly-leg-a, .roomly-leg-b, .roomly-smoke, .roomly-cloud,
-  .roomly-card-in, .roomly-badge, .roomly-fade-in, .roomly-sheet-in {
+  .roomly-card-in, .roomly-badge, .roomly-fade-in, .roomly-sheet-in,
+  .roomly-fold-exit-right, .roomly-fold-exit-left {
     animation: none !important;
   }
   /* Drop interaction transforms too, for motion-sensitive users */
   .roomly-btn { transition: none !important; }
   .roomly-btn:hover, .roomly-btn:active { transform: none !important; }
+  .roomly-deck-peek { transform: none; opacity: 0.55; }
+}
+
+/* ---- 3D depth + angled layout system (visual overhaul) ------------------ */
+
+/* Subtle hover tilt for tappable item cards (places, people, listings, matches).
+   Desktop-only (touch devices fire spurious hover) and skipped for reduced motion. */
+@media (hover: hover) and (pointer: fine) {
+  .roomly-tilt {
+    transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 240ms ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .roomly-tilt:hover {
+    transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-4px) scale(1.012);
+  }
+  .roomly-tilt:active {
+    transform: perspective(900px) rotateX(1deg) rotateY(-1deg) translateY(-1px) scale(0.99);
+    transition-duration: 120ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roomly-tilt { transition: none !important; }
+  .roomly-tilt:hover, .roomly-tilt:active { transform: none !important; }
+}
+
+/* Diagonal section dividers: slice a shallow angle off the top/bottom edge so
+   sections meet at an angle instead of a hard rectangle. Angle is gentle
+   (a few vw) so text near the edges never gets clipped. */
+.roomly-diagonal-down {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3.5vw), 0 100%);
+}
+.roomly-diagonal-up {
+  clip-path: polygon(0 3.5vw, 100% 0, 100% 100%, 0 100%);
+}
+
+/* Slow ambient 3D drift for the hero illustration — a barely-there tilt that
+   reads as "real object catching light", not a spin. One loop is long and
+   gentle on purpose; this plays constantly so it must stay understated. */
+@keyframes roomly-idle-tilt {
+  0%, 100% { transform: perspective(1400px) rotateY(-3deg) rotateX(1deg); }
+  50%      { transform: perspective(1400px) rotateY(3deg) rotateX(-1deg); }
+}
+.roomly-idle-tilt { animation: roomly-idle-tilt 9s ease-in-out infinite; transform-style: preserve-3d; }
+
+@media (prefers-reduced-motion: reduce) {
+  .roomly-idle-tilt { animation: none !important; }
 }
 
 /* ---- MapMotif: dotted treasure-trail connectors + map pins ---- */

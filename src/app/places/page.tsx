@@ -8,15 +8,18 @@ import { PlacesNav } from "@/components/PlacesNav";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { isMissingTable } from "@/lib/listings";
 import { peopleConsentSeen, markPeopleConsentSeen } from "@/lib/consent";
+import { prefersReducedMotion } from "@/lib/motion";
+
+const FOLD_EXIT_MS = 320;
 import {
   type Place,
   placeMainPhoto,
-  placeKindLabel,
   formatRentRange,
   deckOrder,
   DEMO_PLACES,
   getDemoPlaceReactions,
   setDemoPlaceReactions,
+  placeKindLabel,
 } from "@/lib/places";
 
 export default function PlacesSwipePage() {
@@ -28,6 +31,7 @@ export default function PlacesSwipePage() {
   const [demo, setDemo] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
+  const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -66,18 +70,31 @@ export default function PlacesSwipePage() {
     })();
   }, []);
 
-  async function react(place: Place, reaction: "like" | "pass") {
+  function react(place: Place, reaction: "like" | "pass") {
+    // Persist optimistically — the fold-away animation shouldn't wait on the network.
     if (demo) {
       setDemoPlaceReactions({ ...getDemoPlaceReactions(), [place.id]: reaction });
     } else if (myId) {
       const supabase = createClient();
-      await supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction });
+      supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction });
     }
     if (reaction === "like" && !peopleConsentSeen()) {
       setShowConsent(true);
       return;
     }
-    setIndex((i) => i + 1);
+    advance(reaction === "like" ? "right" : "left");
+  }
+
+  function advance(direction: "left" | "right") {
+    if (prefersReducedMotion()) {
+      setIndex((i) => i + 1);
+      return;
+    }
+    setExitDirection(direction);
+    window.setTimeout(() => {
+      setIndex((i) => i + 1);
+      setExitDirection(null);
+    }, FOLD_EXIT_MS);
   }
 
   function dismissConsent() {
@@ -100,6 +117,7 @@ export default function PlacesSwipePage() {
     );
 
   const current = places[index];
+  const peek = places[index + 1];
 
   return (
     <main className="roomly-page flex flex-1 flex-col">
@@ -160,53 +178,78 @@ export default function PlacesSwipePage() {
           </div>
         ) : (
           <>
-            <div
-              key={current.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => router.push(`/places/${current.id}`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  router.push(`/places/${current.id}`);
-                }
-              }}
-              className="roomly-card-in mt-6 w-full cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-shadow duration-300 hover:shadow-xl hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
-            >
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={placeMainPhoto(current)} alt={current.name} className="h-full w-full object-cover" />
-                <div className="absolute left-3 top-3 flex items-center gap-1.5">
-                  {current.curated && <VerifiedBadge label="Curated" />}
-                  <span className="roomly-badge inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
-                    {placeKindLabel(current.kind)}
-                  </span>
+            <div className="relative mt-6 w-full">
+              {peek && (
+                <div
+                  aria-hidden="true"
+                  className="roomly-deck-peek absolute inset-0 z-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80"
+                >
+                  <div className="aspect-[4/3] w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={placeMainPhoto(peek)} alt="" className="h-full w-full object-cover" />
+                  </div>
                 </div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
-                  <h2 className="text-xl font-bold text-white">{current.name}</h2>
-                  <p className="mt-0.5 text-sm text-zinc-200">
-                    {[current.neighborhood, current.city].filter(Boolean).join(", ") || "—"}
+              )}
+
+              <div
+                key={current.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/places/${current.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/places/${current.id}`);
+                  }
+                }}
+                className={`relative z-10 w-full cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-shadow duration-300 hover:shadow-xl hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80 ${
+                  exitDirection === "right"
+                    ? "roomly-fold-exit-right"
+                    : exitDirection === "left"
+                      ? "roomly-fold-exit-left"
+                      : "roomly-card-in"
+                }`}
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={placeMainPhoto(current)} alt={current.name} className="h-full w-full object-cover" />
+                  <div className="absolute left-3 top-3 flex items-center gap-1.5">
+                    {current.curated && <VerifiedBadge label="Curated" />}
+                    <span className="roomly-badge inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
+                      {placeKindLabel(current.kind)}
+                    </span>
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
+                    <h2 className="text-xl font-bold text-white">{current.name}</h2>
+                    <p className="mt-0.5 text-sm text-zinc-200">
+                      {[current.neighborhood, current.city].filter(Boolean).join(", ") || "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <p className="text-lg font-black text-violet-600 dark:text-violet-400">
+                    {formatRentRange(current.rent_min, current.rent_max)}
+                  </p>
+                  <p className="mt-3 text-center text-xs font-medium text-violet-600 dark:text-violet-400">
+                    Tap to see details →
                   </p>
                 </div>
-              </div>
-              <div className="p-4">
-                <p className="text-lg font-black text-violet-600 dark:text-violet-400">
-                  {formatRentRange(current.rent_min, current.rent_max)}
-                </p>
-                <p className="mt-3 text-center text-xs font-medium text-violet-600 dark:text-violet-400">
-                  Tap to see details →
-                </p>
               </div>
             </div>
 
             <div className="mt-6 flex w-full gap-4">
               <button
                 onClick={() => react(current, "pass")}
-                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                disabled={exitDirection !== null}
+                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Pass 👎
               </button>
-              <button onClick={() => react(current, "like")} className="roomly-btn h-14 flex-1 text-base">
+              <button
+                onClick={() => react(current, "like")}
+                disabled={exitDirection !== null}
+                className="roomly-btn h-14 flex-1 text-base"
+              >
                 Like ❤️
               </button>
             </div>
