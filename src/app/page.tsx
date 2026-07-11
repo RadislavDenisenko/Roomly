@@ -46,7 +46,15 @@ export default function Home() {
           who want it too — match, chat, then go find a home together.
         </p>
 
-        <HouseScene />
+        <div className="relative mt-8 w-full max-w-xl">
+          <div
+            aria-hidden="true"
+            className="absolute -inset-10 -z-10 rounded-[3rem] bg-gradient-to-br from-fuchsia-300/40 via-violet-300/30 to-transparent blur-2xl dark:from-fuchsia-500/20 dark:via-violet-500/15"
+          />
+          <div className="roomly-idle-tilt">
+            <HouseScene />
+          </div>
+        </div>
 
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
           <DemoButton className="flex h-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600 px-8 text-base font-bold text-white shadow-xl shadow-violet-500/30 transition-transform hover:scale-105 disabled:opacity-70" />
@@ -62,10 +70,33 @@ export default function Home() {
         </p>
       </section>
 
-      <section className="relative z-10 mx-auto grid w-full max-w-4xl gap-4 px-6 pb-16 sm:grid-cols-3">
-        <Feature emoji="🏠" title="Find an apartment" desc="Real, curated listings in your city — no scraped fakes, no dead links." color="from-orange-400 to-pink-500" />
-        <Feature emoji="👋" title="See who else wants it" desc="Liking a place unlocks the verified people looking there too." color="from-violet-500 to-indigo-500" />
-        <Feature emoji="🛡️" title="Match, verified" desc="Everyone is confirmed — the thing other apps make you pay for." color="from-fuchsia-500 to-pink-500" />
+      <section className="roomly-diagonal-up relative z-0 -mt-8 bg-gradient-to-br from-violet-100/80 via-fuchsia-50/60 to-white pb-20 pt-24 dark:from-violet-950/40 dark:via-zinc-900 dark:to-zinc-950">
+        <div className="mx-auto grid w-full max-w-4xl gap-6 px-6 sm:grid-cols-3 sm:gap-4">
+          <Feature
+            emoji="🏠"
+            title="Find an apartment"
+            desc="Real, curated listings in your city — no scraped fakes, no dead links."
+            color="from-orange-400 to-pink-500"
+            tilt="-rotate-2 sm:-translate-y-3"
+            delay="0ms"
+          />
+          <Feature
+            emoji="👋"
+            title="See who else wants it"
+            desc="Liking a place unlocks the verified people looking there too."
+            color="from-violet-500 to-indigo-500"
+            tilt="rotate-1 sm:translate-y-2"
+            delay="80ms"
+          />
+          <Feature
+            emoji="🛡️"
+            title="Match, verified"
+            desc="Everyone is confirmed — the thing other apps make you pay for."
+            color="from-fuchsia-500 to-pink-500"
+            tilt="-rotate-1 sm:-translate-y-1"
+            delay="160ms"
+          />
+        </div>
       </section>
     </main>
   );
@@ -73,7 +104,6 @@ export default function Home() {
 
 function HouseScene() {
   return (
-    <div className="mt-8 w-full max-w-xl">
       <svg
         viewBox="0 0 480 340"
         className="h-auto w-full"
@@ -168,7 +198,6 @@ function HouseScene() {
           </g>
         </g>
       </svg>
-    </div>
   );
 }
 
@@ -177,14 +206,21 @@ function Feature({
   title,
   desc,
   color,
+  tilt,
+  delay,
 }: {
   emoji: string;
   title: string;
   desc: string;
   color: string;
+  tilt: string;
+  delay: string;
 }) {
   return (
-    <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 text-left shadow-sm backdrop-blur transition-transform hover:-translate-y-1 dark:border-zinc-800 dark:bg-zinc-900/80">
+    <div
+      style={{ animationDelay: delay }}
+      className={`roomly-card-in roomly-tilt ${tilt} rounded-3xl border border-zinc-200 bg-white/90 p-6 text-left shadow-md backdrop-blur transition-transform duration-150 ease-out active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/90`}
+    >
       <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-2xl shadow-lg`}>
         {emoji}
       </div>
