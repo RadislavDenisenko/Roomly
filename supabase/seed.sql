@@ -125,3 +125,108 @@ insert into public.places (name, kind, city, neighborhood, rent_min, rent_max, c
 select 'Cherrywood Court', 'house', 'Austin, TX', 'Cherrywood', 1000, 1700, true,
   array['https://picsum.photos/seed/roomly-place-cherrywood-a/800/1000','https://picsum.photos/seed/roomly-place-cherrywood-b/800/1000']
 where not exists (select 1 from public.places where name = 'Cherrywood Court');
+
+-- 7) Seed place likes so the apartment-first People pools have real pools.
+--    maya shares The Triangle + Hyde Park Commons with several other seeded
+--    users; the rest are scattered across the directory.
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'sample.maya@roomly.test' and p.name = 'The Triangle'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'sample.maya@roomly.test' and p.name = 'Hyde Park Commons'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.alex@roomly.demo' and p.name = 'The Triangle'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.mia@roomly.demo' and p.name = 'The Triangle'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.noah@roomly.demo' and p.name = 'The Triangle'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.ava@roomly.demo' and p.name = 'Hyde Park Commons'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.liam@roomly.demo' and p.name = 'Hyde Park Commons'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.sofia@roomly.demo' and p.name = 'Zilker Terrace'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.ethan@roomly.demo' and p.name = 'Riverside Landing'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.zoe@roomly.demo' and p.name = 'Domain Northside Flats'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.lucas@roomly.demo' and p.name = 'Aldrich House'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.emma@roomly.demo' and p.name = 'South Congress Studios'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.caleb@roomly.demo' and p.name = 'Barton Creek Villas'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'seed.harper@roomly.demo' and p.name = 'Cherrywood Court'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+insert into public.place_reactions (user_id, place_id, reaction)
+select u.id, p.id, 'like'
+from auth.users u, public.places p
+where u.email = 'sample.diego@roomly.test' and p.name = 'East 6th Lofts'
+  and not exists (select 1 from public.place_reactions r where r.user_id = u.id and r.place_id = p.id);
+
+-- 8) Seed two residents (declared "I live here, looking for a roommate").
+--    A no-op if these sample accounts don't exist locally.
+update public.profiles set place_id = p.id, looking_for_roommate = true
+from public.places p
+where public.profiles.id = (select id from auth.users where email = 'sample.riley@roomly.test')
+  and p.name = 'The Triangle';
+
+update public.profiles set place_id = p.id, looking_for_roommate = true
+from public.places p
+where public.profiles.id = (select id from auth.users where email = 'sample.diego@roomly.test')
+  and p.name = 'East 6th Lofts';
