@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { isMissingTable } from "@/lib/listings";
+import { type Place } from "@/lib/places";
 
 type Form = {
   full_name: string;
@@ -58,6 +60,15 @@ export default function ProfilePage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
+  // Housing card
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [placesDemo, setPlacesDemo] = useState(false);
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [selectedPlaceName, setSelectedPlaceName] = useState<string | null>(null);
+  const [lookingForRoommate, setLookingForRoommate] = useState(false);
+  const [peopleVisible, setPeopleVisible] = useState(true);
+
   useEffect(() => {
     if (!supabaseConfigured) return;
     const supabase = createClient();
@@ -98,13 +109,51 @@ export default function ProfilePage() {
           db_no_pet_owners: profile.db_no_pet_owners ?? false,
           db_budget_overlap_only: profile.db_budget_overlap_only ?? false,
         });
+        setLookingForRoommate(profile.looking_for_roommate ?? false);
+        setPeopleVisible(profile.people_visible ?? true);
+        setSelectedPlaceId(profile.place_id ?? null);
       }
+
+      const { data: placeRows, error: placesErr } = await supabase
+        .from("places")
+        .select("*")
+        .order("name", { ascending: true });
+      if (placesErr) {
+        if (isMissingTable(placesErr)) setPlacesDemo(true);
+      } else {
+        setPlaces((placeRows ?? []) as Place[]);
+        const current = (placeRows ?? []).find((p: Place) => p.id === profile?.place_id);
+        if (current) {
+          setSelectedPlaceName(current.name);
+          setPlaceQuery(current.name);
+        }
+      }
+
       setLoading(false);
     });
   }, []);
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+    setSaved(false);
+  }
+
+  const placeMatches = places.filter((p) =>
+    p.name.toLowerCase().includes(placeQuery.trim().toLowerCase()),
+  );
+
+  function pickPlace(p: Place) {
+    setSelectedPlaceId(p.id);
+    setSelectedPlaceName(p.name);
+    setPlaceQuery(p.name);
+    setSaved(false);
+  }
+
+  function clearPlace() {
+    setSelectedPlaceId(null);
+    setSelectedPlaceName(null);
+    setPlaceQuery("");
+    setLookingForRoommate(false);
     setSaved(false);
   }
 
@@ -197,6 +246,9 @@ export default function ProfilePage() {
       db_nonsmokers_only: form.db_nonsmokers_only,
       db_no_pet_owners: form.db_no_pet_owners,
       db_budget_overlap_only: form.db_budget_overlap_only,
+      place_id: selectedPlaceId,
+      looking_for_roommate: selectedPlaceId ? lookingForRoommate : false,
+      people_visible: peopleVisible,
     });
     setSaving(false);
     if (error) setError(error.message);
@@ -383,6 +435,79 @@ export default function ProfilePage() {
           <Area label="Short bio" value={form.bio} onChange={(v) => update("bio", v)} placeholder="A couple sentences about you…" />
         </Card>
 
+        <Card title="Housing">
+          <div>
+            <span className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Where I live</span>
+            {placesDemo ? (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Places aren&apos;t set up yet — run <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800">supabase/schema.sql</code> first.
+              </p>
+            ) : selectedPlaceName ? (
+              <div className="flex items-center justify-between rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 dark:border-violet-800 dark:bg-violet-950/40">
+                <span className="text-sm font-semibold text-violet-800 dark:text-violet-200">{selectedPlaceName}</span>
+                <button
+                  type="button"
+                  onClick={clearPlace}
+                  aria-label="Clear place"
+                  className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                >
+                  ✕ Clear
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  value={placeQuery}
+                  onChange={(e) => setPlaceQuery(e.target.value)}
+                  placeholder="Search by place name (e.g. The Triangle)"
+                  aria-label="Search places"
+                  className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+                {placeQuery.trim() && placeMatches.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {placeMatches.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => pickPlace(p)}
+                        className="flex w-full items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm hover:border-violet-400 dark:border-zinc-700"
+                      >
+                        <span className="font-medium text-zinc-900 dark:text-zinc-50">{p.name}</span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {[p.neighborhood, p.city].filter(Boolean).join(", ") || "—"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <Toggle
+              label="Looking for a roommate"
+              checked={lookingForRoommate}
+              onChange={setLookingForRoommate}
+              disabled={!selectedPlaceId}
+            />
+            {!selectedPlaceId && (
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Set your place above first.</p>
+            )}
+          </div>
+
+          <div>
+            <Toggle
+              label="Show me to people who like the same places"
+              checked={peopleVisible}
+              onChange={setPeopleVisible}
+            />
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Off means you can still see pools, but you won&apos;t appear in them.
+            </p>
+          </div>
+        </Card>
+
         <Card title="What you're looking for">
           <div className="grid grid-cols-2 gap-4">
             <Text label="Budget min ($/mo)" type="number" value={form.budget_min} onChange={(v) => update("budget_min", v)} placeholder="800" />
@@ -444,7 +569,7 @@ export default function ProfilePage() {
 
         <Card title="Dealbreakers (hard filters)">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Turn these on to completely hide anyone who does not meet them in Discover.
+            Turn these on to completely hide anyone who does not meet them in People.
           </p>
           <div className="space-y-3">
             <Toggle label="Only show non-smokers" checked={form.db_nonsmokers_only} onChange={(v) => update("db_nonsmokers_only", v)} />
@@ -590,18 +715,25 @@ function Toggle({
   label,
   checked,
   onChange,
+  disabled,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+    <label
+      className={`flex items-center gap-2 text-sm font-medium ${
+        disabled ? "text-zinc-400 dark:text-zinc-600" : "text-zinc-700 dark:text-zinc-300"
+      }`}
+    >
       <input
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+        className="h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
       />
       {label}
     </label>
