@@ -225,7 +225,7 @@ export default function TogetherPage() {
                     <Link
                       key={l.id}
                       href={`/places/unit/${l.id}`}
-                      className="roomly-card-in flex items-center gap-3 rounded-2xl border-2 border-violet-300 bg-violet-50/60 p-3 transition-transform hover:-translate-y-0.5 dark:border-violet-800 dark:bg-violet-950/30"
+                      className="roomly-card-in roomly-tilt flex items-center gap-3 rounded-2xl border-2 border-violet-300 bg-violet-50/60 p-3 transition-transform duration-150 ease-out active:scale-[0.98] dark:border-violet-800 dark:bg-violet-950/30"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={listingMainPhoto(l)} alt={l.title} className="h-14 w-14 shrink-0 rounded-xl object-cover" />

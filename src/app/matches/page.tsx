@@ -108,7 +108,7 @@ export default function MatchesPage() {
               <li
                 key={m.id}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className="roomly-card-in flex items-center gap-4 rounded-3xl border border-zinc-200 bg-white/80 p-4 backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-violet-900"
+                className="roomly-card-in roomly-tilt flex items-center gap-4 rounded-3xl border border-zinc-200 bg-white/80 p-4 backdrop-blur transition-[color,background-color,border-color,transform] duration-200 ease-out hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/10 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-violet-900"
               >
                 <button type="button" onClick={() => setDetail(m)} className="flex min-w-0 flex-1 items-center gap-4 text-left">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -127,7 +127,7 @@ export default function SavedPage() {
                   }
                 }}
                 style={{ animationDelay: `${i * 50}ms` }}
-                className="roomly-card-in group cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
+                className="roomly-card-in roomly-tilt group cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-transform duration-150 ease-out hover:shadow-lg hover:shadow-violet-500/10 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/80"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
