@@ -40,8 +40,12 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="roomly-page flex flex-1 items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm">
+    <main className="roomly-page relative flex flex-1 items-center justify-center overflow-hidden px-6 py-12">
+      <div
+        aria-hidden="true"
+        className="absolute left-1/2 top-1/2 -z-0 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-gradient-to-br from-fuchsia-300/30 via-violet-300/25 to-transparent blur-3xl dark:from-fuchsia-500/15 dark:via-violet-500/10"
+      />
+      <div className="relative w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
           <span className="roomly-mark h-9 w-9 text-base">
             R
@@ -51,7 +55,7 @@ export default function LoginPage() {
           </span>
         </Link>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
+        <div className="roomly-card-in rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
             Welcome back
           </h1>
