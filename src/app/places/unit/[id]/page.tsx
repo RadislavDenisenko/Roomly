@@ -126,10 +126,10 @@ export default function ListingDetailPage() {
     <main className="roomly-page flex flex-1 flex-col">
       <header className="sticky top-0 z-10 mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-3">
         <Link
-          href="/places/browse"
+          href={listing.place_id ? `/places/${listing.place_id}` : "/places/browse"}
           className="flex h-9 items-center gap-1 rounded-full bg-white/80 px-4 text-sm font-semibold text-zinc-700 backdrop-blur transition-colors hover:bg-white dark:bg-zinc-900/80 dark:text-zinc-200"
         >
-          ← Places
+          {listing.place_id ? "← Place" : "← Places"}
         </Link>
         <button
           type="button"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { isMissingTable } from "@/lib/listings";
+import { type Place } from "@/lib/places";
 
 const MAX_PHOTOS = 8;
 
@@ -25,14 +26,58 @@ export default function NewListingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Place picker
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [placesDemo, setPlacesDemo] = useState(false);
+  const [placeQuery, setPlaceQuery] = useState("");
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [selectedPlaceName, setSelectedPlaceName] = useState<string | null>(null);
+
   useEffect(() => {
     if (!supabaseConfigured) return;
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
       setAuthed(!!data.user);
       setLoading(false);
-    });
+      if (!data.user) return;
+
+      const { data: placeRows, error: placesErr } = await supabase
+        .from("places")
+        .select("*")
+        .order("name", { ascending: true });
+      if (placesErr) {
+        if (isMissingTable(placesErr)) setPlacesDemo(true);
+        return;
+      }
+      setPlaces((placeRows ?? []) as Place[]);
+    })();
   }, []);
+
+  const placeMatches = places.filter((p) =>
+    p.name.toLowerCase().includes(placeQuery.trim().toLowerCase()),
+  );
+  const exactMatch = places.some((p) => p.name.toLowerCase() === placeQuery.trim().toLowerCase());
+
+  function pickPlace(p: Place) {
+    setSelectedPlaceId(p.id);
+    setSelectedPlaceName(p.name);
+    setPlaceQuery(p.name);
+  }
+
+  // "Create" isn't picked from the list — it just locks in the typed name so
+  // handleSubmit knows to insert a new place row on submit.
+  function pickNewPlaceName(name: string) {
+    setSelectedPlaceId(null);
+    setSelectedPlaceName(`${name} (new)`);
+    setPlaceQuery(name);
+  }
+
+  function clearPlace() {
+    setSelectedPlaceId(null);
+    setSelectedPlaceName(null);
+    setPlaceQuery("");
+  }
 
   async function handleAddPhotos(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -71,6 +116,10 @@ export default function NewListingPage() {
       setError("Give your place a title.");
       return;
     }
+    if (!placesDemo && !selectedPlaceId && !placeQuery.trim()) {
+      setError("Which place is this in? Search for it or create a new one.");
+      return;
+    }
     setSubmitting(true);
     const supabase = createClient();
     const { data: userData } = await supabase.auth.getUser();
@@ -79,6 +128,32 @@ export default function NewListingPage() {
       setSubmitting(false);
       return;
     }
+
+    let placeId: string | null = selectedPlaceId;
+    if (!placesDemo && !placeId) {
+      const { data: placeRow, error: placeErr } = await supabase
+        .from("places")
+        .insert({
+          created_by: userData.user.id,
+          name: placeQuery.trim(),
+          kind: "complex",
+          city: city.trim() || null,
+          neighborhood: neighborhood.trim() || null,
+        })
+        .select("id")
+        .single();
+      if (placeErr) {
+        setError(
+          isMissingTable(placeErr)
+            ? "Places aren't set up yet — run the latest supabase/schema.sql first."
+            : placeErr.message,
+        );
+        setSubmitting(false);
+        return;
+      }
+      placeId = placeRow.id;
+    }
+
     const { data, error: insErr } = await supabase
       .from("listings")
       .insert({
@@ -93,6 +168,7 @@ export default function NewListingPage() {
         available_from: availableFrom || null,
         photos,
         verified: false,
+        place_id: placeId,
       })
       .select("id")
       .single();
@@ -133,6 +209,61 @@ export default function NewListingPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           List a room or apartment for roommates to find. Roomly verifies listings before they get a badge.
         </p>
+
+        <Card title="Which place is this in?">
+          {placesDemo ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Places aren&apos;t set up yet — run <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800">supabase/schema.sql</code> first. Posting a place also requires the real tables, so the picker is skipped in demo mode.
+            </p>
+          ) : selectedPlaceName ? (
+            <div className="flex items-center justify-between rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 dark:border-violet-800 dark:bg-violet-950/40">
+              <span className="text-sm font-semibold text-violet-800 dark:text-violet-200">{selectedPlaceName}</span>
+              <button
+                type="button"
+                onClick={clearPlace}
+                className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+              >
+                Change
+              </button>
+            </div>
+          ) : (
+            <div>
+              <input
+                value={placeQuery}
+                onChange={(e) => setPlaceQuery(e.target.value)}
+                placeholder="Search by place name (e.g. The Triangle)"
+                aria-label="Search places"
+                className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              />
+              {placeQuery.trim() && (
+                <div className="mt-2 space-y-1.5">
+                  {placeMatches.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => pickPlace(p)}
+                      className="flex w-full items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-left text-sm hover:border-violet-400 dark:border-zinc-700"
+                    >
+                      <span className="font-medium text-zinc-900 dark:text-zinc-50">{p.name}</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {[p.neighborhood, p.city].filter(Boolean).join(", ") || "—"}
+                      </span>
+                    </button>
+                  ))}
+                  {!exactMatch && (
+                    <button
+                      type="button"
+                      onClick={() => pickNewPlaceName(placeQuery.trim())}
+                      className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-violet-300 px-3 py-2 text-left text-sm font-medium text-violet-600 hover:border-violet-400 dark:border-violet-700 dark:text-violet-400"
+                    >
+                      ＋ Create &quot;{placeQuery.trim()}&quot;
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
 
         <Card title="Photos">
           <div className="grid grid-cols-3 gap-3">

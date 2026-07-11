@@ -93,7 +93,7 @@ export default function SavedPage() {
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Saved places</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Every apartment you&apos;ve hearted, in one spot.
+          Every apartment you&apos;ve saved, in one spot.
         </p>
         <PlacesNav />
 
@@ -109,7 +109,7 @@ export default function SavedPage() {
         ) : saved.length === 0 ? (
           <div className="mt-10 text-center">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No saved places yet.</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Tap the 🤍 on any place to keep it here.</p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Save apartments from inside a place page — open a place, then tap 🤍 on a unit.</p>
             <Link href="/places/browse" className="roomly-btn mt-6 h-11 px-6 text-sm">Browse places</Link>
           </div>
         ) : (
