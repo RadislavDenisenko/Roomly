@@ -11,6 +11,7 @@ import { peopleConsentSeen, markPeopleConsentSeen } from "@/lib/consent";
 import {
   type Place,
   placeMainPhoto,
+  placeKindLabel,
   formatRentRange,
   deckOrder,
   DEMO_PLACES,
@@ -178,7 +179,7 @@ export default function PlacesSwipePage() {
                 <div className="absolute left-3 top-3 flex items-center gap-1.5">
                   {current.curated && <VerifiedBadge label="Curated" />}
                   <span className="roomly-badge inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
-                    {current.kind}
+                    {placeKindLabel(current.kind)}
                   </span>
                 </div>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">

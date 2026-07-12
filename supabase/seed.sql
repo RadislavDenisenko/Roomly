@@ -10,7 +10,7 @@ set verification_status = 'verified', email_verified = true,
 from auth.users u
 where p.id = u.id and u.email like 'sample.%@roomly.test';
 
--- 2) Create ~12 profile-only demo users (never log in; exist so they appear in Discover).
+-- 2) Create ~12 profile-only demo users (never log in; exist so they appear in People pools).
 --    The on_auth_user_created trigger auto-creates a blank profiles row for each.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,

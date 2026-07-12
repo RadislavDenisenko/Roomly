@@ -11,6 +11,7 @@ import { isMissingTable } from "@/lib/listings";
 import {
   type Place,
   placeMainPhoto,
+  placeKindLabel,
   formatRentRange,
   DEMO_PLACES,
   getDemoPlaceReactions,
@@ -259,13 +260,13 @@ export default function BrowsePlacesPage() {
                         <div className="absolute left-3 top-3 flex items-center gap-1.5">
                           {p.curated && <VerifiedBadge label="Curated" />}
                           <span className="roomly-badge inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
-                            {p.kind}
+                            {placeKindLabel(p.kind)}
                           </span>
                         </div>
                         <div className="absolute right-3 top-3 flex gap-2">
                           <button
                             type="button"
-                            aria-label="Pass"
+                            aria-label={mine === "pass" ? "Passed — tap to clear" : "Pass"}
                             onClick={(e) => {
                               e.stopPropagation();
                               react(p.id, "pass");

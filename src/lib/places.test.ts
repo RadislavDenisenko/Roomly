@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatRentRange, deckOrder, type Place } from "./places";
+import { formatRentRange, deckOrder, placeKindLabel, type Place } from "./places";
 
 describe("formatRentRange", () => {
   it("formats a range with an en dash", () => {
@@ -34,6 +34,15 @@ function place(overrides: Partial<Place>): Place {
     ...overrides,
   };
 }
+
+describe("placeKindLabel", () => {
+  it("maps each kind to a human-readable label", () => {
+    expect(placeKindLabel("complex")).toBe("Complex");
+    expect(placeKindLabel("building")).toBe("Building");
+    expect(placeKindLabel("house")).toBe("House");
+    expect(placeKindLabel("other")).toBe("Other");
+  });
+});
 
 describe("deckOrder", () => {
   it("puts curated places before non-curated places", () => {

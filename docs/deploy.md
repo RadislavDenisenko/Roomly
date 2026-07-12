@@ -5,7 +5,7 @@ Everything is pre-staged. This is a ~5-minute, $0 deploy. Do the steps in order.
 ## 0. Status (already done)
 - Code is on GitHub: `https://github.com/RadislavDenisenko/Roomly` (branch `main`).
 - `supabase/schema.sql` and `supabase/seed.sql` have been run against the live DB.
-- App is verified working locally (demo login → populated discover/matches, no errors).
+- App is verified working locally (demo login → populated places/People, no errors).
 
 ## After pulling this release (Supabase SQL editor)
 This release adds the apartment-first core loop (places, People pools, durable

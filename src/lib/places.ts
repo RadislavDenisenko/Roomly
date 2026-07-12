@@ -29,6 +29,18 @@ export function placeMainPhoto(p: Pick<Place, "id" | "photos">): string {
   return placePhotos(p)[0];
 }
 
+const PLACE_KIND_LABELS: Record<Place["kind"], string> = {
+  complex: "Complex",
+  building: "Building",
+  house: "House",
+  other: "Other",
+};
+
+// Human-readable label for the raw place `kind` enum, for chips/badges.
+export function placeKindLabel(kind: Place["kind"]): string {
+  return PLACE_KIND_LABELS[kind];
+}
+
 export function formatRentRange(min: number | null, max: number | null): string {
   if (min == null && max == null) return "Rent varies";
   if (min != null && max != null && min !== max) {

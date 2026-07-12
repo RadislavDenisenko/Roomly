@@ -99,10 +99,6 @@ export default function PeoplePage() {
       const verified = meProfile.verification_status === "verified";
       setMe(meProfile);
       setMeVerified(verified);
-      if (!verified) {
-        setLoading(false);
-        return;
-      }
 
       const { data: prRows, error: prError } = await supabase
         .from("place_reactions")
@@ -119,6 +115,11 @@ export default function PeoplePage() {
             people: withScores(DEMO_POOLS[place.id] ?? [], meProfile),
           })).filter((s) => s.people.length > 0),
         );
+        setLoading(false);
+        return;
+      }
+
+      if (!verified) {
         setLoading(false);
         return;
       }
@@ -193,6 +194,7 @@ export default function PeoplePage() {
           .from("profiles")
           .select("*")
           .neq("id", uid)
+          .eq("people_visible", true)
           .not("full_name", "is", null);
         const filtered = ((others ?? []) as CompatProfile[]).filter((p) => {
           if (p.verification_status !== "verified") return false;

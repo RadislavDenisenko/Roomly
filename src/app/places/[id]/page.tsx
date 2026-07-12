@@ -9,6 +9,7 @@ import { TrailDivider } from "@/components/MapMotif";
 import {
   type Place,
   placePhotos,
+  placeKindLabel,
   formatRentRange,
   DEMO_PLACES,
 } from "@/lib/places";
@@ -127,21 +128,24 @@ export default function PlaceDetailPage() {
   async function react(reaction: "like" | "pass") {
     if (!place) return;
     const next = myReaction === reaction ? null : reaction;
-    setMyReaction(next);
-    if (demo) {
+    if (demo || !myId) {
       // Demo reactions for places live in a separate localStorage map (see
       // Browse), but this page only needs the local "locked/unlocked" state
       // for the teaser, so no cross-page persistence call is required here
       // beyond what Browse already does for the demo place-reactions map.
+      setMyReaction(next);
       return;
     }
-    if (!myId) return;
     const supabase = createClient();
     if (next === null) {
       await supabase.from("place_reactions").delete().eq("user_id", myId).eq("place_id", place.id);
     } else {
       await supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction: next });
     }
+    // Only flip the state that drives the people-count effect after the
+    // write commits, so people_for_place sees eligibility once it's actually
+    // there — otherwise the count can race ahead and show "you're early".
+    setMyReaction(next);
   }
 
   async function toggleSave(listingId: string) {
@@ -240,7 +244,7 @@ export default function PlaceDetailPage() {
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{place.name}</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {[place.neighborhood, place.city].filter(Boolean).join(", ") || "—"} · {place.kind}
+              {[place.neighborhood, place.city].filter(Boolean).join(", ") || "—"} · {placeKindLabel(place.kind)}
             </p>
           </div>
           <p className="shrink-0 text-xl font-black text-violet-600 dark:text-violet-400">

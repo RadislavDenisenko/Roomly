@@ -131,27 +131,36 @@ export default function NewListingPage() {
 
     let placeId: string | null = selectedPlaceId;
     if (!placesDemo && !placeId) {
-      const { data: placeRow, error: placeErr } = await supabase
-        .from("places")
-        .insert({
-          created_by: userData.user.id,
-          name: placeQuery.trim(),
-          kind: "complex",
-          city: city.trim() || null,
-          neighborhood: neighborhood.trim() || null,
-        })
-        .select("id")
-        .single();
-      if (placeErr) {
-        setError(
-          isMissingTable(placeErr)
-            ? "Places aren't set up yet — run the latest supabase/schema.sql first."
-            : placeErr.message,
-        );
-        setSubmitting(false);
-        return;
+      // Typing an existing place's exact name without clicking the suggestion
+      // shouldn't fork a duplicate places row — reuse the match if there is one.
+      const existing = places.find(
+        (p) => p.name.trim().toLowerCase() === placeQuery.trim().toLowerCase(),
+      );
+      if (existing) {
+        placeId = existing.id;
+      } else {
+        const { data: placeRow, error: placeErr } = await supabase
+          .from("places")
+          .insert({
+            created_by: userData.user.id,
+            name: placeQuery.trim(),
+            kind: "complex",
+            city: city.trim() || null,
+            neighborhood: neighborhood.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (placeErr) {
+          setError(
+            isMissingTable(placeErr)
+              ? "Places aren't set up yet — run the latest supabase/schema.sql first."
+              : placeErr.message,
+          );
+          setSubmitting(false);
+          return;
+        }
+        placeId = placeRow.id;
       }
-      placeId = placeRow.id;
     }
 
     const { data, error: insErr } = await supabase
