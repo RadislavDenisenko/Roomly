@@ -70,7 +70,7 @@ export default function Home() {
         </p>
       </section>
 
-      <section className="roomly-diagonal-up relative z-0 -mt-8 bg-gradient-to-br from-violet-100/80 via-fuchsia-50/60 to-white pb-20 pt-24 dark:from-violet-950/40 dark:via-zinc-900 dark:to-zinc-950">
+      <section className="roomly-diagonal-up relative z-10 -mt-8 bg-gradient-to-br from-violet-100/80 via-fuchsia-50/60 to-white pb-20 pt-24 dark:from-violet-950/40 dark:via-zinc-900 dark:to-zinc-950">
         <div className="mx-auto grid w-full max-w-4xl gap-6 px-6 sm:grid-cols-3 sm:gap-4">
           <Feature
             emoji="🏠"
@@ -217,15 +217,17 @@ function Feature({
   delay: string;
 }) {
   return (
-    <div
-      style={{ animationDelay: delay }}
-      className={`roomly-card-in roomly-tilt ${tilt} rounded-3xl border border-zinc-200 bg-white/90 p-6 text-left shadow-md backdrop-blur transition-transform duration-150 ease-out active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/90`}
-    >
-      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-2xl shadow-lg`}>
-        {emoji}
+    <div className={tilt}>
+      <div
+        style={{ animationDelay: delay }}
+        className="roomly-card-in roomly-tilt rounded-3xl border border-zinc-200 bg-white/90 p-6 text-left shadow-md backdrop-blur transition-transform duration-150 ease-out active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/90"
+      >
+        <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${color} text-2xl shadow-lg`}>
+          {emoji}
+        </div>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{title}</h3>
+        <p className="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{desc}</p>
       </div>
-      <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{title}</h3>
-      <p className="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{desc}</p>
     </div>
   );
 }

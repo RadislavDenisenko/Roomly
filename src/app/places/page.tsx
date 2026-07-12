@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
@@ -32,6 +32,11 @@ export default function PlacesSwipePage() {
   const [myId, setMyId] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
   const [exitDirection, setExitDirection] = useState<"left" | "right" | null>(null);
+  // Synchronous re-entry guard: state-based `exitDirection` updates aren't visible
+  // until the next render, so a fast double-activation (double-tap/click, or
+  // Enter fired twice) can slip past the `disabled` check below. This ref closes
+  // that window.
+  const exitingRef = useRef(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -71,12 +76,20 @@ export default function PlacesSwipePage() {
   }, []);
 
   function react(place: Place, reaction: "like" | "pass") {
+    if (exitingRef.current) return;
+    exitingRef.current = true;
     // Persist optimistically — the fold-away animation shouldn't wait on the network.
     if (demo) {
       setDemoPlaceReactions({ ...getDemoPlaceReactions(), [place.id]: reaction });
     } else if (myId) {
       const supabase = createClient();
-      supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction });
+      // Intentionally not awaited — this write is fire-and-forget so the
+      // fold-away animation never blocks on the network; the no-op handler
+      // just prevents an unhandled rejection.
+      supabase
+        .from("place_reactions")
+        .upsert({ user_id: myId, place_id: place.id, reaction })
+        .then(undefined, () => {});
     }
     if (reaction === "like" && !peopleConsentSeen()) {
       setShowConsent(true);
@@ -88,19 +101,23 @@ export default function PlacesSwipePage() {
   function advance(direction: "left" | "right") {
     if (prefersReducedMotion()) {
       setIndex((i) => i + 1);
+      exitingRef.current = false;
       return;
     }
     setExitDirection(direction);
     window.setTimeout(() => {
       setIndex((i) => i + 1);
       setExitDirection(null);
+      exitingRef.current = false;
     }, FOLD_EXIT_MS);
   }
 
   function dismissConsent() {
     markPeopleConsentSeen();
     setShowConsent(false);
-    setIndex((i) => i + 1);
+    // Route through advance() so the card folds away the same as any other
+    // reaction instead of jumping straight to the next index.
+    advance("right");
   }
 
   if (loading) return <Centered>Loading places…</Centered>;
@@ -197,6 +214,7 @@ export default function PlacesSwipePage() {
                 tabIndex={0}
                 onClick={() => router.push(`/places/${current.id}`)}
                 onKeyDown={(e) => {
+                  if (exitingRef.current) return;
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     router.push(`/places/${current.id}`);

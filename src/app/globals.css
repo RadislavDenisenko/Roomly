@@ -173,7 +173,8 @@ body {
    Desktop-only (touch devices fire spurious hover) and skipped for reduced motion. */
 @media (hover: hover) and (pointer: fine) {
   .roomly-tilt {
-    transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 240ms ease;
+    transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 240ms ease,
+      border-color 200ms ease, background-color 200ms ease, color 200ms ease;
     transform-style: preserve-3d;
     will-change: transform;
   }
@@ -194,9 +195,6 @@ body {
 /* Diagonal section dividers: slice a shallow angle off the top/bottom edge so
    sections meet at an angle instead of a hard rectangle. Angle is gentle
    (a few vw) so text near the edges never gets clipped. */
-.roomly-diagonal-down {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3.5vw), 0 100%);
-}
 .roomly-diagonal-up {
   clip-path: polygon(0 3.5vw, 100% 0, 100% 100%, 0 100%);
 }
