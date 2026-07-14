@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
@@ -125,8 +125,13 @@ export default function PlaceDetailPage() {
     })();
   }, [myReaction, place, demo, myId]);
 
+  // Awaiting the write before setMyReaction (below) means a second tap during
+  // the round-trip would compute `next` from stale state and could settle the
+  // UI on a value that disagrees with the DB row — so reject taps in flight.
+  const reactingRef = useRef(false);
+
   async function react(reaction: "like" | "pass") {
-    if (!place) return;
+    if (!place || reactingRef.current) return;
     const next = myReaction === reaction ? null : reaction;
     if (demo || !myId) {
       // Demo reactions for places live in a separate localStorage map (see
@@ -136,16 +141,21 @@ export default function PlaceDetailPage() {
       setMyReaction(next);
       return;
     }
-    const supabase = createClient();
-    if (next === null) {
-      await supabase.from("place_reactions").delete().eq("user_id", myId).eq("place_id", place.id);
-    } else {
-      await supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction: next });
+    reactingRef.current = true;
+    try {
+      const supabase = createClient();
+      if (next === null) {
+        await supabase.from("place_reactions").delete().eq("user_id", myId).eq("place_id", place.id);
+      } else {
+        await supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction: next });
+      }
+      // Only flip the state that drives the people-count effect after the
+      // write commits, so people_for_place sees eligibility once it's actually
+      // there — otherwise the count can race ahead and show "you're early".
+      setMyReaction(next);
+    } finally {
+      reactingRef.current = false;
     }
-    // Only flip the state that drives the people-count effect after the
-    // write commits, so people_for_place sees eligibility once it's actually
-    // there — otherwise the count can race ahead and show "you're early".
-    setMyReaction(next);
   }
 
   async function toggleSave(listingId: string) {
