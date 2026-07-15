@@ -95,3 +95,14 @@ export function isMissingTable(error: { message?: string; code?: string } | null
     msg.includes("could not find the table")
   );
 }
+
+// True when an error from Supabase means a referenced column doesn't exist
+// (i.e. the schema.sql migration hasn't been updated to include that column).
+export function isMissingColumn(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === "42703" || // postgres: column does not exist
+    error.code === "PGRST204" || // postgrest: column not found
+    /column .* does not exist|could not find the .* column/i.test(error.message ?? "")
+  );
+}
