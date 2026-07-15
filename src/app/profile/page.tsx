@@ -5,20 +5,44 @@ import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { isMissingTable } from "@/lib/listings";
 import { type Place } from "@/lib/places";
+import type { Gender, OvernightGuests, RoommateGenderPref, WorkSchedule } from "@/lib/compat";
+import {
+  type BudgetRange,
+  BudgetRangeInputs,
+  CleanlinessSlider,
+  GenderSelect,
+  GuestsSelect,
+  IncomeInput,
+  LookingForSelect,
+  NoiseSlider,
+  OvernightGuestsSelect,
+  PetsToggle,
+  RoommatesWantedSelect,
+  SleepScheduleSelect,
+  SmokingToggle,
+  WorkScheduleSelect,
+} from "@/components/ProfileFields";
 
 type Form = {
   full_name: string;
   age: string;
   city: string;
   bio: string;
+  gender: Gender | "";
+  roommate_gender_pref: RoommateGenderPref | "";
   budget_min: string;
   budget_max: string;
   move_in_date: string;
+  roommates_wanted: number | null;
+  income_monthly: string;
   cleanliness: number;
   sleep_schedule: string;
+  work_schedule: WorkSchedule | "";
   smoking: boolean;
   pets: boolean;
   guests: string;
+  overnight_guests: OvernightGuests | "";
+  noise_level: number | null;
   photos: string[];
   db_nonsmokers_only: boolean;
   db_no_pet_owners: boolean;
@@ -30,14 +54,21 @@ const EMPTY: Form = {
   age: "",
   city: "",
   bio: "",
+  gender: "",
+  roommate_gender_pref: "",
   budget_min: "",
   budget_max: "",
   move_in_date: "",
+  roommates_wanted: null,
+  income_monthly: "",
   cleanliness: 3,
   sleep_schedule: "flexible",
+  work_schedule: "",
   smoking: false,
   pets: false,
   guests: "sometimes",
+  overnight_guests: "",
+  noise_level: null,
   photos: [],
   db_nonsmokers_only: false,
   db_no_pet_owners: false,
@@ -91,14 +122,21 @@ export default function ProfilePage() {
           age: profile.age?.toString() ?? "",
           city: profile.city ?? "",
           bio: profile.bio ?? "",
+          gender: (profile.gender as Gender) ?? "",
+          roommate_gender_pref: (profile.roommate_gender_pref as RoommateGenderPref) ?? "",
           budget_min: profile.budget_min?.toString() ?? "",
           budget_max: profile.budget_max?.toString() ?? "",
           move_in_date: profile.move_in_date ?? "",
+          roommates_wanted: profile.roommates_wanted ?? null,
+          income_monthly: profile.income_monthly?.toString() ?? "",
           cleanliness: profile.cleanliness ?? 3,
           sleep_schedule: profile.sleep_schedule ?? "flexible",
+          work_schedule: (profile.work_schedule as WorkSchedule) ?? "",
           smoking: profile.smoking ?? false,
           pets: profile.pets ?? false,
           guests: profile.guests ?? "sometimes",
+          overnight_guests: (profile.overnight_guests as OvernightGuests) ?? "",
+          noise_level: profile.noise_level ?? null,
           photos:
             profile.photos && profile.photos.length > 0
               ? profile.photos
@@ -135,6 +173,11 @@ export default function ProfilePage() {
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+    setSaved(false);
+  }
+
+  function updateBudget(v: BudgetRange) {
+    setForm((f) => ({ ...f, budget_min: v.min, budget_max: v.max }));
     setSaved(false);
   }
 
@@ -227,20 +270,32 @@ export default function ProfilePage() {
       setSaving(false);
       return;
     }
+    let budgetMin = form.budget_min ? parseInt(form.budget_min, 10) : null;
+    let budgetMax = form.budget_max ? parseInt(form.budget_max, 10) : null;
+    if (budgetMin != null && budgetMax != null && budgetMin > budgetMax) {
+      [budgetMin, budgetMax] = [budgetMax, budgetMin];
+    }
     const { error } = await supabase.from("profiles").upsert({
       id: userData.user.id,
       full_name: form.full_name || null,
       age: form.age ? parseInt(form.age, 10) : null,
       city: form.city || null,
       bio: form.bio || null,
-      budget_min: form.budget_min ? parseInt(form.budget_min, 10) : null,
-      budget_max: form.budget_max ? parseInt(form.budget_max, 10) : null,
+      gender: form.gender || null,
+      roommate_gender_pref: form.roommate_gender_pref || null,
+      budget_min: budgetMin,
+      budget_max: budgetMax,
       move_in_date: form.move_in_date || null,
+      roommates_wanted: form.roommates_wanted,
+      income_monthly: form.income_monthly ? parseInt(form.income_monthly, 10) : null,
       cleanliness: form.cleanliness,
       sleep_schedule: form.sleep_schedule,
+      work_schedule: form.work_schedule || null,
       smoking: form.smoking,
       pets: form.pets,
       guests: form.guests,
+      overnight_guests: form.overnight_guests || null,
+      noise_level: form.noise_level,
       avatar_url: form.photos[0] ?? null,
       photos: form.photos,
       db_nonsmokers_only: form.db_nonsmokers_only,
@@ -432,6 +487,10 @@ export default function ProfilePage() {
             <Text label="Age" type="number" value={form.age} onChange={(v) => update("age", v)} placeholder="24" />
             <Text label="City" value={form.city} onChange={(v) => update("city", v)} placeholder="Austin, TX" />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <GenderSelect value={form.gender} onChange={(v) => update("gender", v)} />
+            <LookingForSelect value={form.roommate_gender_pref} onChange={(v) => update("roommate_gender_pref", v)} />
+          </div>
           <Area label="Short bio" value={form.bio} onChange={(v) => update("bio", v)} placeholder="A couple sentences about you…" />
         </Card>
 
@@ -509,61 +568,30 @@ export default function ProfilePage() {
         </Card>
 
         <Card title="What you're looking for">
+          <BudgetRangeInputs
+            value={{ min: form.budget_min, max: form.budget_max }}
+            onChange={(v) => updateBudget(v)}
+          />
           <div className="grid grid-cols-2 gap-4">
-            <Text label="Budget min ($/mo)" type="number" value={form.budget_min} onChange={(v) => update("budget_min", v)} placeholder="800" />
-            <Text label="Budget max ($/mo)" type="number" value={form.budget_max} onChange={(v) => update("budget_max", v)} placeholder="1400" />
+            <RoommatesWantedSelect value={form.roommates_wanted} onChange={(v) => update("roommates_wanted", v)} />
+            <IncomeInput value={form.income_monthly} onChange={(v) => update("income_monthly", v)} />
           </div>
           <Text label="Move-in date" type="date" value={form.move_in_date} onChange={(v) => update("move_in_date", v)} />
         </Card>
 
         <Card title="Lifestyle (powers your matches)">
-          <div>
-            <span className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Cleanliness: {cleanlinessLabel(form.cleanliness)}
-            </span>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => update("cleanliness", n)}
-                  className={`h-10 flex-1 rounded-lg border text-sm font-medium transition-colors ${
-                    form.cleanliness === n
-                      ? "border-emerald-600 bg-emerald-600 text-white"
-                      : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
+          <CleanlinessSlider value={form.cleanliness} onChange={(v) => update("cleanliness", v)} />
+          <NoiseSlider value={form.noise_level} onChange={(v) => update("noise_level", v)} />
 
-          <Select
-            label="Sleep schedule"
-            value={form.sleep_schedule}
-            onChange={(v) => update("sleep_schedule", v)}
-            options={[
-              ["early_bird", "Early bird"],
-              ["night_owl", "Night owl"],
-              ["flexible", "Flexible"],
-            ]}
-          />
+          <SleepScheduleSelect value={form.sleep_schedule} onChange={(v) => update("sleep_schedule", v)} />
+          <WorkScheduleSelect value={form.work_schedule} onChange={(v) => update("work_schedule", v)} />
 
-          <Select
-            label="Guests over"
-            value={form.guests}
-            onChange={(v) => update("guests", v)}
-            options={[
-              ["rarely", "Rarely"],
-              ["sometimes", "Sometimes"],
-              ["often", "Often"],
-            ]}
-          />
+          <GuestsSelect value={form.guests} onChange={(v) => update("guests", v)} />
+          <OvernightGuestsSelect value={form.overnight_guests} onChange={(v) => update("overnight_guests", v)} />
 
           <div className="flex gap-6">
-            <Toggle label="I smoke" checked={form.smoking} onChange={(v) => update("smoking", v)} />
-            <Toggle label="I have pets" checked={form.pets} onChange={(v) => update("pets", v)} />
+            <SmokingToggle value={form.smoking} onChange={(v) => update("smoking", v)} />
+            <PetsToggle value={form.pets} onChange={(v) => update("pets", v)} />
           </div>
         </Card>
 
@@ -599,10 +627,6 @@ export default function ProfilePage() {
       </form>
     </main>
   );
-}
-
-function cleanlinessLabel(n: number) {
-  return ["", "Relaxed", "Easygoing", "Tidy", "Very tidy", "Spotless"][n] ?? "";
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
@@ -676,37 +700,6 @@ function Area({
         rows={3}
         className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
       />
-    </label>
-  );
-}
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: [string, string][];
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        {label}
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-      >
-        {options.map(([v, label]) => (
-          <option key={v} value={v}>
-            {label}
-          </option>
-        ))}
-      </select>
     </label>
   );
 }
