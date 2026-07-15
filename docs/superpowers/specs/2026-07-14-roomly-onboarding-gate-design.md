@@ -27,9 +27,8 @@ compatibility score so results rank closest-first and widen gracefully.
   existing design language.
 - **Gender preference is a hard, MUTUAL filter** that never widens: person P
   appears for caller C only if (C's pref is 'any' OR P.gender = C's pref)
-  AND (P's pref is 'any' OR C.gender = P's pref). Nonbinary/other users are
-  matched by the 'any' preference only — stated plainly in the toggle's
-  helper copy.
+  AND (P's pref is 'any' OR C.gender = P's pref). Gender options are
+  **male and female only** (Rad's call, 2026-07-14).
 - **Everything else ranks and widens** (Rad: "first people you match with…
   then farther and farther"): compat-score sort within a pool, then the
   existing place → neighborhood → city tiers, with honest copy at each
@@ -50,7 +49,7 @@ compatibility score so results rank closest-first and widen gracefully.
 ```sql
 alter table public.profiles
   add column if not exists gender text
-    check (gender in ('male','female','nonbinary','other')),
+    check (gender in ('male','female')),
   add column if not exists roommate_gender_pref text
     check (roommate_gender_pref in ('male','female','any')),
   add column if not exists roommates_wanted int
@@ -172,7 +171,7 @@ in People stay clean (no new chips there).
   2. **Your place** — budget range (the min/max inputs `/profile` already
      uses, extracted and reused), how many
      roommates (1 / 2 / 3+ segmented), looking-for toggle
-     (male / female / either, with the nonbinary helper copy), optional
+     (male / female / either), optional
      income field ("Optional — shown on your profile if you fill it").
   3. **Your habits** — cleanliness (1–5), sleep schedule, work schedule,
      smoking, pets, friends over, plus optional overnight-guests and noise
@@ -233,5 +232,5 @@ per-task review.
 
 ## 12. Open questions
 
-None blocking. (Income display copy fixed as "~$X/mo income"; nonbinary
-handling fixed as 'any'-only visibility with explicit helper copy.)
+None blocking. (Income display copy fixed as "~$X/mo income"; gender
+options fixed as male/female only.)
