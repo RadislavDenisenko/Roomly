@@ -48,6 +48,23 @@ alter table public.profiles
   add column if not exists id_verified boolean default false,
   add column if not exists verified_at timestamptz;
 
+-- Onboarding fields required for the people pools (see onboarding-gate spec 4.1).
+alter table public.profiles
+  add column if not exists gender text
+    check (gender in ('male','female')),
+  add column if not exists roommate_gender_pref text
+    check (roommate_gender_pref in ('male','female','any')),
+  add column if not exists roommates_wanted int
+    check (roommates_wanted between 1 and 3),   -- 3 renders as "3+"
+  add column if not exists work_schedule text
+    check (work_schedule in ('day','night','wfh','flexible')),
+  add column if not exists income_monthly int
+    check (income_monthly is null or income_monthly between 0 and 100000),
+  add column if not exists overnight_guests text
+    check (overnight_guests in ('rarely','sometimes','often')),
+  add column if not exists noise_level int
+    check (noise_level is null or noise_level between 1 and 5);
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Authenticated users can view profiles" on public.profiles;
@@ -530,6 +547,23 @@ update public.listings l set place_id = p.id
 from public.places p
 where l.place_id is null and p.name = l.title;
 
+-- True when every field required for matching is filled (see onboarding spec).
+create or replace function public.profile_complete(uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = uid
+      and p.full_name is not null and p.age is not null and p.city is not null
+      and p.gender is not null and p.roommate_gender_pref is not null
+      and p.budget_min is not null and p.budget_max is not null
+      and p.roommates_wanted is not null and p.work_schedule is not null
+      and p.cleanliness is not null and p.sleep_schedule is not null
+      and p.smoking is not null and p.pets is not null and p.guests is not null
+  );
+$$;
+
+grant execute on function public.profile_complete(uuid) to authenticated;
+
 -- People pools: the ONLY cross-user window into place_reactions. -----------
 create or replace function public.people_for_place(pid uuid)
 returns table (
@@ -538,11 +572,17 @@ returns table (
   sleep_schedule text, smoking boolean, pets boolean, guests text,
   verification_status text, member_group text
 ) language plpgsql stable security definer set search_path = public as $$
+declare
+  c_gender text;
+  c_pref text;
 begin
   if auth.uid() is null then return; end if;
   if (select p.verification_status from public.profiles p where p.id = auth.uid()) <> 'verified' then
     return;
   end if;
+  if not public.profile_complete(auth.uid()) then return; end if;
+  select p.gender, p.roommate_gender_pref into c_gender, c_pref
+    from public.profiles p where p.id = auth.uid();
   -- eligible = caller liked this place, or lives there
   if not exists (select 1 from public.place_reactions r
                  where r.user_id = auth.uid() and r.place_id = pid and r.reaction = 'like')
@@ -564,6 +604,9 @@ begin
                     where l.liker_id = auth.uid() and l.liked_id = p.id)
     and not exists (select 1 from public.passes x
                     where x.passer_id = auth.uid() and x.passed_id = p.id)
+    and public.profile_complete(p.id)
+    and (c_pref = 'any' or p.gender = c_pref)
+    and (p.roommate_gender_pref = 'any' or p.roommate_gender_pref = c_gender)
     and (
       (p.people_visible and exists (select 1 from public.place_reactions r
                                     where r.user_id = p.id and r.place_id = pid
@@ -581,11 +624,17 @@ returns table (
   sleep_schedule text, smoking boolean, pets boolean, guests text,
   verification_status text, member_group text
 ) language plpgsql stable security definer set search_path = public as $$
+declare
+  c_gender text;
+  c_pref text;
 begin
   if auth.uid() is null then return; end if;
   if (select p.verification_status from public.profiles p where p.id = auth.uid()) <> 'verified' then
     return;
   end if;
+  if not public.profile_complete(auth.uid()) then return; end if;
+  select p.gender, p.roommate_gender_pref into c_gender, c_pref
+    from public.profiles p where p.id = auth.uid();
   -- eligible = caller has a like on ANY place in this city (+ neighborhood if given)
   if not exists (
     select 1 from public.place_reactions r
@@ -610,6 +659,9 @@ begin
                     where l.liker_id = auth.uid() and l.liked_id = p.id)
     and not exists (select 1 from public.passes x
                     where x.passer_id = auth.uid() and x.passed_id = p.id)
+    and public.profile_complete(p.id)
+    and (c_pref = 'any' or p.gender = c_pref)
+    and (p.roommate_gender_pref = 'any' or p.roommate_gender_pref = c_gender)
     and exists (
       select 1 from public.place_reactions r
       join public.places pl on pl.id = r.place_id
