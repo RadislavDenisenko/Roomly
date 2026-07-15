@@ -145,7 +145,7 @@ export default function VerifyPage() {
         {status === "verified" && (
           <div className="mt-6 rounded-2xl bg-green-50 px-4 py-4 text-center dark:bg-green-950/40">
             <p className="font-semibold text-green-700 dark:text-green-300">You&apos;re verified! 🎉</p>
-            <Link href="/places" className="roomly-btn mt-3 inline-flex h-11 items-center px-6 text-sm">Start matching</Link>
+            <Link href="/onboarding" className="roomly-btn mt-3 inline-flex h-11 items-center px-6 text-sm">Set up your profile</Link>
           </div>
         )}
       </div>
