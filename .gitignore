@@ -40,5 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Claude Code local settings (machine-specific; may contain keys)
-.claude/settings.local.json
+# Editor and assistant tooling — local to whoever is working on the repo, and
+# not part of the project. Kept out entirely rather than partially tracked.
+.claude/
+CLAUDE.md
+AGENTS.md
+.cursor/
+.aider*
