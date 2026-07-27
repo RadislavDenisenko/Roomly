@@ -10,7 +10,7 @@ cleanliness, lifestyle), and once you match you can chat and hunt for apartments
 together. No scammers, no fake listings — the thing other apps make you pay for
 is free here.
 
-> **Live demo:** _add your Vercel URL here after deploying_
+> **Live demo:** https://roomly-khaki.vercel.app
 > Click **"Try the demo"** on the landing page — it drops you straight into a
 > populated account (no signup needed).
 
@@ -87,6 +87,6 @@ of them automatically.
 
 ## Status & roadmap
 
-This is a polished, deployable demo (Path A). The plan for taking it to real users —
-costs, legal prerequisites, and the cold-start strategy — is documented in
-[`docs/superpowers/roomly-path-b-readiness.md`](docs/superpowers/roomly-path-b-readiness.md).
+This is a polished, deployable demo. Taking it to real users needs paid ID and SMS
+verification providers, a reviewed privacy policy, and a city-by-city launch to solve
+the cold start — a matching product is worthless until one market is dense.

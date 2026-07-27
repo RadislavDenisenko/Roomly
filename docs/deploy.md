@@ -47,5 +47,5 @@ Login won't work in production until you do this:
 
 ## 5. After it's live
 - Put the live URL into `README.md` (the "Live demo" line) and into the GitHub repo's "About" → Website field.
-- Optional later: a custom domain, real ID/SMS providers — see
-  `docs/superpowers/roomly-path-b-readiness.md`.
+- Optional later: a custom domain, and swapping the demo verification stubs for real
+  ID/SMS providers.

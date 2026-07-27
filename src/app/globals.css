@@ -1,42 +1,60 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf7f2;
+  --foreground: #221c15;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: ui-monospace, "SF Mono", monospace;
 
-  /* Bold & social: remap the app's accent to a vibrant violet
-     (every existing accent across the app shifts to this at once) */
-  --color-emerald-50: #f5f3ff;
-  --color-emerald-100: #ede9fe;
-  --color-emerald-200: #ddd6fe;
-  --color-emerald-300: #c4b5fd;
-  --color-emerald-400: #a78bfa;
-  --color-emerald-500: #8b5cf6;
-  --color-emerald-600: #7c3aed;
-  --color-emerald-700: #6d28d9;
-  --color-emerald-800: #5b21b6;
-  --color-emerald-900: #4c1d95;
-  --color-emerald-950: #2e1065;
+  /* Brand: brick red. Used for CTAs and energy moments. */
+  --color-brick-50: #fdf3f0;
+  --color-brick-100: #f9e2dc;
+  --color-brick-200: #f2c5b8;
+  --color-brick-300: #e69c87;
+  --color-brick-400: #d4715a;
+  --color-brick-500: #b9503a;
+  --color-brick-600: #9c3b2a;
+  --color-brick-700: #7f2f22;
+  --color-brick-800: #66271d;
+  --color-brick-900: #521f18;
+  --color-brick-950: #2f100c;
+
+  /* Brand: forest green. The app's existing emerald-* classes now render
+     this calm, down-to-earth green (trust / verified moments). */
+  --color-emerald-50: #f2f7f3;
+  --color-emerald-100: #e0ede3;
+  --color-emerald-200: #c2dcc9;
+  --color-emerald-300: #9cc4a8;
+  --color-emerald-400: #6fa682;
+  --color-emerald-500: #4d8a64;
+  --color-emerald-600: #38704e;
+  --color-emerald-700: #2e5a40;
+  --color-emerald-800: #264a36;
+  --color-emerald-900: #203d2d;
+  --color-emerald-950: #10241a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #171310;
+    --foreground: #efe9e1;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
 }
 
 /* ---- Shared brand styles (keeps the gradient identity in one place) ---- */
@@ -44,50 +62,29 @@ body {
   /* The little gradient "R" logo square. Set size + text size per use,
      e.g. <span className="roomly-mark h-9 w-9 text-base">R</span> */
   .roomly-mark {
-    @apply flex items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-violet-600 font-black text-white shadow-lg shadow-violet-500/30;
+    @apply flex items-center justify-center rounded-2xl bg-brick-600 font-black text-white shadow-md shadow-brick-900/20;
   }
 
   /* Primary call-to-action button. Set height/width/padding/text size per use,
      e.g. <button className="roomly-btn h-11 w-full text-sm">
      Lifts on hover (desktop) and presses in on tap (mobile-ready). */
   .roomly-btn {
-    @apply inline-flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600 font-semibold text-white shadow-lg shadow-violet-500/30 transition-transform duration-200 ease-out hover:scale-[1.03] active:scale-95 disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100;
+    @apply inline-flex items-center justify-center rounded-full bg-brick-600 font-semibold text-white shadow-md shadow-brick-900/20 transition-all duration-200 ease-out hover:bg-brick-700 hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100;
   }
 
-  /* Soft violet page wash that ties app pages to the landing page. */
+  /* Warm paper page wash that ties app pages to the landing page. */
   .roomly-page {
-    @apply bg-gradient-to-b from-violet-50 via-fuchsia-50/40 to-white dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950;
+    @apply bg-[#faf7f2] dark:bg-[#171310];
   }
 }
 
-/* ---- Claymation hero scene animations ---- */
-@keyframes roomly-walk {
-  0%   { transform: translateX(-300px); opacity: 0; }
-  8%   { opacity: 1; }
-  80%  { transform: translateX(-4px); opacity: 1; }
-  90%  { transform: translateX(-4px); opacity: 0; }
-  100% { transform: translateX(-300px); opacity: 0; }
+/* ---- Landing hero: copy rises in as the scene settles ---- */
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes roomly-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
-}
-@keyframes roomly-step-a {
-  0%, 100% { transform: rotate(22deg); }
-  50%      { transform: rotate(-22deg); }
-}
-@keyframes roomly-step-b {
-  0%, 100% { transform: rotate(-22deg); }
-  50%      { transform: rotate(22deg); }
-}
-@keyframes roomly-smoke {
-  0%   { transform: translateY(0) scale(1); opacity: 0.5; }
-  100% { transform: translateY(-26px) scale(1.7); opacity: 0; }
-}
-@keyframes roomly-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-8px); }
-}
+.hero-rise { animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
 /* Cards slide up + fade in as they appear (used for the swipe card and match rows) */
 @keyframes roomly-card-in {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
@@ -109,20 +106,13 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.roomly-walker { animation: roomly-walk 7s ease-in-out infinite; }
-.roomly-bob    { animation: roomly-bob 0.55s ease-in-out infinite; }
-.roomly-leg-a  { transform-box: fill-box; transform-origin: top center; animation: roomly-step-a 0.55s ease-in-out infinite; }
-.roomly-leg-b  { transform-box: fill-box; transform-origin: top center; animation: roomly-step-b 0.55s ease-in-out infinite; }
-.roomly-smoke  { transform-box: fill-box; transform-origin: center; animation: roomly-smoke 3s ease-out infinite; }
-.roomly-cloud  { animation: roomly-float 6s ease-in-out infinite; }
-
 .roomly-card-in { animation: roomly-card-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .roomly-badge   { animation: roomly-badge-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .roomly-fade-in { animation: roomly-fade-in 0.2s ease-out both; }
 .roomly-sheet-in { animation: roomly-sheet-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .roomly-walker, .roomly-bob, .roomly-leg-a, .roomly-leg-b, .roomly-smoke, .roomly-cloud,
+  .hero-rise,
   .roomly-card-in, .roomly-badge, .roomly-fade-in, .roomly-sheet-in {
     animation: none !important;
   }
