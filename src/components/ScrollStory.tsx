@@ -15,8 +15,8 @@ export type StoryScene = {
  * reads better chunky than smooth. Phones get fewer frames at a smaller size.
  */
 const SETS = {
-  full: { count: 48, dir: "frames" },
-  small: { count: 32, dir: "frames-sm" },
+  full: { count: 80, dir: "frames" },
+  small: { count: 48, dir: "frames-sm" },
 } as const;
 
 const framePath = (dir: string, i: number) =>
