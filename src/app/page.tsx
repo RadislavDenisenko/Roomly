@@ -3,39 +3,21 @@ import Image from "next/image";
 import { ScrollStory, type StoryScene } from "@/components/ScrollStory";
 import { BuildingsIcon, UsersThreeIcon, SealCheckIcon } from "@phosphor-icons/react/dist/ssr";
 
-// The five landing scenes. One person, one couch, five apartments: the person
-// and couch hold their exact position across the set so the transition videos
-// can rebuild the room around them without anything appearing to jump.
+// Three landing beats. He stays on the couch in the right third of every frame
+// while the apartment is rebuilt under him twice and, in the last room, someone
+// arrives — copy lives in the left third and never crosses him.
 const SCENES: StoryScene[] = [
   {
-    src: "/story/scene-1.png?v=2",
-    alt: "A person seen from behind on a green couch in a tiny brick-walled studio",
     headline: "You. A couch. No place yet.",
     sub: "Roomly starts where you are: looking for a home and the people to share it with.",
   },
   {
-    src: "/story/scene-2.png?v=2",
-    alt: "Same person and couch in a bright Scandinavian apartment, a roommate waving from the doorway",
-    headline: "Swipe real apartments.",
-    sub: "Curated listings in your city. Liking one unlocks the verified people who want it too.",
+    headline: "Try on a whole city.",
+    sub: "Swipe real listings near you. Like one and it shows you who else wants it.",
   },
   {
-    src: "/story/scene-3.png?v=2",
-    alt: "Same person and couch in an industrial loft, roommates playing a board game",
-    headline: "Match with verified people.",
-    sub: "Everyone is confirmed before they can message you. No fakes, no ghosts.",
-  },
-  {
-    src: "/story/scene-4.png?v=2",
-    alt: "Same person and couch in a cozy attic apartment, friends cooking and a golden retriever nearby",
-    headline: "Chat, meet, decide together.",
-    sub: "Group chats around the place you all liked. Meet up, compare notes, choose.",
-  },
-  {
-    src: "/story/scene-5.png?v=2",
-    alt: "Same person and couch on moving-in day, boxes and keys, roommates unpacking",
-    headline: "Move in. That's the whole point.",
-    sub: "Keys on the table, boxes on the floor, people you actually chose.",
+    headline: "Then it's just home.",
+    sub: "Everyone is identity-verified before they can message you. Match, talk it through, move in.",
   },
 ];
 
@@ -71,16 +53,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Scroll story: the person stays, the rooms deconstruct and rebuild */}
-      <ScrollStory
-        scenes={SCENES}
-        transitions={[
-          "/story/transition-1-2.mp4",
-          "/story/transition-2-3.mp4",
-          "/story/transition-3-4.mp4",
-          "/story/transition-4-5.mp4",
-        ]}
-      />
+      {/* Scroll story: he stays put, the rooms and the people change around him */}
+      <ScrollStory scenes={SCENES} />
 
       {/* Features: asymmetric bento in the new palette */}
       <section className="mx-auto w-full max-w-6xl px-6 py-24">
@@ -156,7 +130,7 @@ export default function Home() {
               <figcaption className="mt-5 flex items-center gap-3">
                 <span className="relative h-10 w-10 overflow-hidden rounded-full">
                   <Image
-                    src={`/story/${t.seed}.png?v=2`}
+                    src={`/story/${t.seed}.png?v=3`}
                     alt={`Portrait of ${t.name}`}
                     fill
                     sizes="40px"
