@@ -153,6 +153,24 @@ select 'Cherrywood Court', 'house', 'Austin, TX', 'Cherrywood', 1000, 1700, true
   array['https://picsum.photos/seed/roomly-place-cherrywood-a/800/1000','https://picsum.photos/seed/roomly-place-cherrywood-b/800/1000']
 where not exists (select 1 from public.places where name = 'Cherrywood Court');
 
+-- 6a) Real building exteriors (generated, shipped in public/places/) replace
+--     the stock-photo URLs. Runs after the inserts, so it covers fresh and
+--     existing databases alike.
+update public.places p set photos = array['/places/' || d.slug || '.jpg']
+from (values
+  ('The Triangle',           'the-triangle'),
+  ('East 6th Lofts',         'east-6th-lofts'),
+  ('Zilker Terrace',         'zilker-terrace'),
+  ('Hyde Park Commons',      'hyde-park-commons'),
+  ('Riverside Landing',      'riverside-landing'),
+  ('Domain Northside Flats', 'domain-northside-flats'),
+  ('Aldrich House',          'aldrich-house'),
+  ('South Congress Studios', 'south-congress-studios'),
+  ('Barton Creek Villas',    'barton-creek-villas'),
+  ('Cherrywood Court',       'cherrywood-court')
+) as d(name, slug)
+where p.name = d.name;
+
 -- 6b) Amenity tags for the curated directory (matched against pref_tags).
 update public.places p set tags = d.tags::text[]
 from (values

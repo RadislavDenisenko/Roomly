@@ -72,15 +72,33 @@ export function matchedTagLabels(place: Place, prefTags: string[] | null): strin
   return (place.tags ?? []).filter((t) => wanted.has(t)).map((t) => TAG_LABELS[t] ?? t);
 }
 
-// Stock fallback photos for a place with no uploads yet (deterministic by id).
+// Locally generated building exteriors (public/places/). Used as the seed
+// directory's photos and as the fallback for places with no uploads yet.
+const BUILDING_PHOTOS = [
+  "/places/the-triangle.jpg",
+  "/places/east-6th-lofts.jpg",
+  "/places/zilker-terrace.jpg",
+  "/places/hyde-park-commons.jpg",
+  "/places/riverside-landing.jpg",
+  "/places/domain-northside-flats.jpg",
+  "/places/aldrich-house.jpg",
+  "/places/south-congress-studios.jpg",
+  "/places/barton-creek-villas.jpg",
+  "/places/cherrywood-court.jpg",
+  "/places/shared-house.jpg",
+];
+
+function hashId(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+// Fallback photo for a place with no uploads: a real building exterior,
+// deterministic by id so a given place always shows the same one.
 export function placePhotos(p: Pick<Place, "id" | "photos">): string[] {
   if (p.photos && p.photos.length > 0) return p.photos;
-  const seed = encodeURIComponent(p.id);
-  return [
-    `https://picsum.photos/seed/${seed}-place1/800/1000`,
-    `https://picsum.photos/seed/${seed}-place2/800/1000`,
-    `https://picsum.photos/seed/${seed}-place3/800/1000`,
-  ];
+  return [BUILDING_PHOTOS[hashId(p.id) % BUILDING_PHOTOS.length]];
 }
 
 export function placeMainPhoto(p: Pick<Place, "id" | "photos">): string {
@@ -122,12 +140,12 @@ export function deckOrder(places: Place[]): Place[] {
 
 // Demo places shown when the real tables don't exist yet (before schema.sql is run).
 export const DEMO_PLACES: Place[] = [
-  { id: "demo-place-1", name: "The Triangle", kind: "complex", city: "Austin, TX", neighborhood: "Triangle State", address: null, rent_min: 1300, rent_max: 2200, photos: null, website: null, curated: true, sponsored: false, created_at: "2026-06-10T00:00:00Z" },
-  { id: "demo-place-2", name: "East 6th Lofts", kind: "complex", city: "Austin, TX", neighborhood: "East Austin", address: null, rent_min: 1250, rent_max: 2100, photos: null, website: null, curated: true, sponsored: false, created_at: "2026-06-09T00:00:00Z" },
-  { id: "demo-place-3", name: "Zilker Terrace", kind: "complex", city: "Austin, TX", neighborhood: "Zilker", address: null, rent_min: 1400, rent_max: 2400, photos: null, website: null, curated: true, sponsored: false, created_at: "2026-06-08T00:00:00Z" },
-  { id: "demo-place-4", name: "Hyde Park Commons", kind: "complex", city: "Austin, TX", neighborhood: "Hyde Park", address: null, rent_min: 1100, rent_max: 1800, photos: null, website: null, curated: true, sponsored: false, created_at: "2026-06-07T00:00:00Z" },
-  { id: "demo-place-5", name: "Cherrywood Court", kind: "house", city: "Austin, TX", neighborhood: "Cherrywood", address: null, rent_min: 1000, rent_max: 1700, photos: null, website: null, curated: true, sponsored: false, created_at: "2026-06-06T00:00:00Z" },
-  { id: "demo-place-6", name: "Riley's shared house", kind: "other", city: "Austin, TX", neighborhood: "East Side", address: null, rent_min: 850, rent_max: null, photos: null, website: null, curated: false, sponsored: false, created_at: "2026-06-05T00:00:00Z" },
+  { id: "demo-place-1", name: "The Triangle", kind: "complex", city: "Austin, TX", neighborhood: "Triangle State", address: null, rent_min: 1300, rent_max: 2200, photos: ["/places/the-triangle.jpg"], website: null, curated: true, sponsored: false, created_at: "2026-06-10T00:00:00Z" },
+  { id: "demo-place-2", name: "East 6th Lofts", kind: "complex", city: "Austin, TX", neighborhood: "East Austin", address: null, rent_min: 1250, rent_max: 2100, photos: ["/places/east-6th-lofts.jpg"], website: null, curated: true, sponsored: false, created_at: "2026-06-09T00:00:00Z" },
+  { id: "demo-place-3", name: "Zilker Terrace", kind: "complex", city: "Austin, TX", neighborhood: "Zilker", address: null, rent_min: 1400, rent_max: 2400, photos: ["/places/zilker-terrace.jpg"], website: null, curated: true, sponsored: false, created_at: "2026-06-08T00:00:00Z" },
+  { id: "demo-place-4", name: "Hyde Park Commons", kind: "complex", city: "Austin, TX", neighborhood: "Hyde Park", address: null, rent_min: 1100, rent_max: 1800, photos: ["/places/hyde-park-commons.jpg"], website: null, curated: true, sponsored: false, created_at: "2026-06-07T00:00:00Z" },
+  { id: "demo-place-5", name: "Cherrywood Court", kind: "house", city: "Austin, TX", neighborhood: "Cherrywood", address: null, rent_min: 1000, rent_max: 1700, photos: ["/places/cherrywood-court.jpg"], website: null, curated: true, sponsored: false, created_at: "2026-06-06T00:00:00Z" },
+  { id: "demo-place-6", name: "Riley's shared house", kind: "other", city: "Austin, TX", neighborhood: "East Side", address: null, rent_min: 850, rent_max: null, photos: ["/places/shared-house.jpg"], website: null, curated: false, sponsored: false, created_at: "2026-06-05T00:00:00Z" },
 ];
 
 // In demo mode (tables not created yet) place reactions are kept in
