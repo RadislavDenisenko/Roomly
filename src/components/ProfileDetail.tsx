@@ -12,6 +12,7 @@ import {
   dishesLabel,
   choresLabel,
   overnightLabel,
+  type AxisScore,
 } from "@/lib/compat";
 
 export type ProfileFull = {
@@ -71,12 +72,14 @@ export function ProfileDetail({
   profile,
   score,
   why,
+  axes,
   footer,
   onClose,
 }: {
   profile: ProfileFull;
   score?: number;
   why?: Reason[];
+  axes?: AxisScore[];
   footer?: React.ReactNode;
   onClose: () => void;
 }) {
@@ -200,6 +203,29 @@ export function ProfileDetail({
                       {r.good ? "✓" : "⚠"} {r.text}
                     </span>
                   ))}
+                </div>
+              )}
+              {axes && axes.some((a) => a.sim !== null) && (
+                <div className="mt-4 space-y-1.5">
+                  {axes
+                    .filter((a) => a.sim !== null)
+                    .map((a) => (
+                      <div key={a.label} className="flex items-center gap-2">
+                        <span className="w-32 shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{a.label}</span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                          <div
+                            className={`h-full rounded-full ${
+                              (a.sim as number) >= 0.7
+                                ? "bg-emerald-500"
+                                : (a.sim as number) >= 0.4
+                                  ? "bg-amber-400"
+                                  : "bg-zinc-300 dark:bg-zinc-600"
+                            }`}
+                            style={{ width: `${Math.round((a.sim as number) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
             </section>

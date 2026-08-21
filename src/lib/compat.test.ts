@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compatibility, reasons, headline, passesDealbreakers, scoreTier, type CompatProfile } from "./compat";
+import { compatibility, reasons, headline, passesDealbreakers, scoreTier, axisScores, type CompatProfile } from "./compat";
 
 function profile(overrides: Partial<CompatProfile>): CompatProfile {
   return {
@@ -95,6 +95,17 @@ describe("reasons", () => {
     const firstGood = r.findIndex((x) => x.good);
     const lastBad = r.map((x) => x.good).lastIndexOf(false);
     if (firstGood !== -1 && lastBad !== -1) expect(lastBad).toBeLessThan(firstGood);
+  });
+});
+
+describe("axisScores", () => {
+  it("scores answered axes and nulls unanswered ones", () => {
+    const me = profile({ dishes: "now" });
+    const them = profile({ id: "them", dishes: "same_day" });
+    const axes = axisScores(me, them);
+    expect(axes.find((a) => a.label === "Dishes")?.sim).toBe(0.8);
+    expect(axes.find((a) => a.label === "Fridge rules")?.sim).toBeNull(); // neither answered
+    expect(axes.find((a) => a.label === "Budget")?.sim).toBe(1); // same range overlaps
   });
 });
 

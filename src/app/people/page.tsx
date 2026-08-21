@@ -11,6 +11,7 @@ import { isMissingTable } from "@/lib/listings";
 import {
   compatibility,
   reasons,
+  axisScores,
   passesDealbreakers,
   scoreTier,
   type CompatProfile,
@@ -429,6 +430,7 @@ function PeopleInner() {
           profile={detailPerson}
           score={detailPerson.score}
           why={me ? reasons(me, detailPerson) : []}
+          axes={me ? axisScores(me, detailPerson) : undefined}
           onClose={() => setDetailPerson(null)}
           footer={
             <div className="flex gap-3">

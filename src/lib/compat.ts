@@ -120,7 +120,9 @@ const CHORE_PAIRS: Record<string, number> = {
 const choresSim = (a: string, b: string) =>
   a === b ? 1 : (CHORE_PAIRS[`${a}|${b}`] ?? CHORE_PAIRS[`${b}|${a}`] ?? UNKNOWN);
 
-type Dim = { weight: number; sim: (me: CompatProfile, them: CompatProfile) => number };
+// A dim's sim returns null when either side hasn't answered; compatibility()
+// scores unknowns as the neutral UNKNOWN, the axis breakdown skips them.
+type Dim = { label: string; weight: number; sim: (me: CompatProfile, them: CompatProfile) => number | null };
 
 const text = (
   pick: (p: CompatProfile) => string | null | undefined,
@@ -128,26 +130,26 @@ const text = (
 ) => (me: CompatProfile, them: CompatProfile) => {
   const a = pick(me);
   const b = pick(them);
-  return a && b ? sim(a, b) : UNKNOWN;
+  return a && b ? sim(a, b) : null;
 };
 
 const DIMS: Dim[] = [
-  { weight: 18, sim: (me, them) =>
+  { label: "Tidiness", weight: 18, sim: (me, them) =>
       me.cleanliness == null || them.cleanliness == null
-        ? UNKNOWN
+        ? null
         : [1, 0.75, 0.45, 0.2, 0][Math.abs(me.cleanliness - them.cleanliness)] ?? 0 },
-  { weight: 12, sim: text((p) => p.dishes, ordinal(["now", "same_day", "soaking", "eventually"], [1, 0.8, 0.3, 0])) },
-  { weight: 12, sim: text((p) => p.sleep_schedule, sleepSim) },
-  { weight: 10, sim: (me, them) => (budgetsOverlap(me, them) ? 1 : 0.2) },
-  { weight: 10, sim: text((p) => p.food_sharing, ordinal(["share", "ask", "separate"], [1, 0.75, 0.3])) },
-  { weight: 8, sim: text((p) => p.overnight_guests, ordinal(["never", "weekends", "often", "partner"], [1, 0.75, 0.35, 0])) },
-  { weight: 8, sim: (me, them) =>
-      me.smoking == null || them.smoking == null ? UNKNOWN : me.smoking === them.smoking ? 1 : 0.25 },
-  { weight: 6, sim: (me, them) =>
-      me.pets == null || them.pets == null ? UNKNOWN : me.pets === them.pets ? 1 : 0.5 },
-  { weight: 6, sim: text((p) => p.chores, choresSim) },
-  { weight: 5, sim: text((p) => p.weekend_style, weekendSim) },
-  { weight: 5, sim: text((p) => p.home_noise, ordinal(["speakers", "headphones", "quiet"], [1, 0.7, 0.15])) },
+  { label: "Dishes", weight: 12, sim: text((p) => p.dishes, ordinal(["now", "same_day", "soaking", "eventually"], [1, 0.8, 0.3, 0])) },
+  { label: "Sleep schedule", weight: 12, sim: text((p) => p.sleep_schedule, sleepSim) },
+  { label: "Budget", weight: 10, sim: (me, them) => (budgetsOverlap(me, them) ? 1 : 0.2) },
+  { label: "Fridge rules", weight: 10, sim: text((p) => p.food_sharing, ordinal(["share", "ask", "separate"], [1, 0.75, 0.3])) },
+  { label: "Overnight guests", weight: 8, sim: text((p) => p.overnight_guests, ordinal(["never", "weekends", "often", "partner"], [1, 0.75, 0.35, 0])) },
+  { label: "Smoking", weight: 8, sim: (me, them) =>
+      me.smoking == null || them.smoking == null ? null : me.smoking === them.smoking ? 1 : 0.25 },
+  { label: "Pets", weight: 6, sim: (me, them) =>
+      me.pets == null || them.pets == null ? null : me.pets === them.pets ? 1 : 0.5 },
+  { label: "Chores", weight: 6, sim: text((p) => p.chores, choresSim) },
+  { label: "Weekends", weight: 5, sim: text((p) => p.weekend_style, weekendSim) },
+  { label: "Noise at home", weight: 5, sim: text((p) => p.home_noise, ordinal(["speakers", "headphones", "quiet"], [1, 0.7, 0.15])) },
 ];
 
 // Hard "no" preferences from the profile's Dealbreakers card.
@@ -165,8 +167,16 @@ export function passesDealbreakers(me: CompatProfile & Dealbreakers, them: Compa
 }
 
 export function compatibility(me: CompatProfile, them: CompatProfile): number {
-  const s = DIMS.reduce((sum, d) => sum + d.weight * d.sim(me, them), 0);
+  const s = DIMS.reduce((sum, d) => sum + d.weight * (d.sim(me, them) ?? UNKNOWN), 0);
   return Math.max(0, Math.min(100, Math.round(s)));
+}
+
+// Per-dimension breakdown for the profile sheet, heaviest axes first (DIMS
+// order). sim is null when either side hasn't answered that question.
+export type AxisScore = { label: string; sim: number | null };
+
+export function axisScores(me: CompatProfile, them: CompatProfile): AxisScore[] {
+  return DIMS.map((d) => ({ label: d.label, sim: d.sim(me, them) }));
 }
 
 // --- "Why you match" chips ---------------------------------------------------
