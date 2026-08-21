@@ -35,7 +35,7 @@ export default function SignupPage() {
     if (error) {
       setMessage({ kind: "error", text: error.message });
     } else if (data.session) {
-      router.push("/profile");
+      router.push("/onboarding");
     } else {
       setMessage({
         kind: "success",
