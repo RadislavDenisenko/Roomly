@@ -10,37 +10,10 @@ type Question = {
   options: Option[];
 };
 
-// One awkward conversation per screen. Order is momentum-first: easy identity
-// questions open, the kitchen cluster lands mid-quiz, dealbreakers close.
+// One awkward conversation per screen. The heavy hitters open — fridge,
+// dishes, trash, tidiness are what actually blow up roommate pairs — and the
+// softer social questions close the quiz. Budget stays last ("Last one…").
 export const QUESTIONS: Question[] = [
-  {
-    key: "sleep_schedule",
-    title: "It's Saturday, 8 a.m. Where are you?",
-    options: [
-      { value: "early_bird", emoji: "☀️", label: "Already up — mornings are mine" },
-      { value: "night_owl", emoji: "😴", label: "Asleep. 8 a.m. is basically midnight" },
-      { value: "flexible", emoji: "🎲", label: "Different every week" },
-    ],
-  },
-  {
-    key: "weekend_style",
-    title: "Friday night, ideal version:",
-    options: [
-      { value: "out", emoji: "🪩", label: "Out out. Home at 3" },
-      { value: "host", emoji: "🍕", label: "A few people over at ours" },
-      { value: "home", emoji: "🛋️", label: "Couch, snacks, something good on" },
-      { value: "depends", emoji: "📅", label: "Depends what week it's been" },
-    ],
-  },
-  {
-    key: "home_noise",
-    title: "You're home, music's on. How?",
-    options: [
-      { value: "speakers", emoji: "🔊", label: "Speakers — the place has a soundtrack" },
-      { value: "headphones", emoji: "🎧", label: "Headphones, mostly" },
-      { value: "quiet", emoji: "🤫", label: "What music? I live for quiet" },
-    ],
-  },
   {
     key: "food_sharing",
     title: "The fridge. What's the rule?",
@@ -107,6 +80,34 @@ export const QUESTIONS: Question[] = [
       { value: false, emoji: "🚭", label: "Nope" },
       { value: true, emoji: "🌬️", label: "Sometimes, outside only" },
       { value: true, emoji: "🚬", label: "Yes" },
+    ],
+  },
+  {
+    key: "sleep_schedule",
+    title: "It's Saturday, 8 a.m. Where are you?",
+    options: [
+      { value: "early_bird", emoji: "☀️", label: "Already up — mornings are mine" },
+      { value: "night_owl", emoji: "😴", label: "Asleep. 8 a.m. is basically midnight" },
+      { value: "flexible", emoji: "🎲", label: "Different every week" },
+    ],
+  },
+  {
+    key: "home_noise",
+    title: "You're home, music's on. How?",
+    options: [
+      { value: "speakers", emoji: "🔊", label: "Speakers — the place has a soundtrack" },
+      { value: "headphones", emoji: "🎧", label: "Headphones, mostly" },
+      { value: "quiet", emoji: "🤫", label: "What music? I live for quiet" },
+    ],
+  },
+  {
+    key: "weekend_style",
+    title: "Friday night, ideal version:",
+    options: [
+      { value: "out", emoji: "🪩", label: "Out out. Home at 3" },
+      { value: "host", emoji: "🍕", label: "A few people over at ours" },
+      { value: "home", emoji: "🛋️", label: "Couch, snacks, something good on" },
+      { value: "depends", emoji: "📅", label: "Depends what week it's been" },
     ],
   },
   {
