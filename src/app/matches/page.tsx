@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { AppNav } from "@/components/AppNav";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { isVerified } from "@/lib/verification";
 import { ProfileDetail, type ProfileFull } from "@/components/ProfileDetail";
@@ -64,25 +65,13 @@ export default function MatchesPage() {
 
   return (
     <main className="roomly-page flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-md items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="roomly-mark h-8 w-8 text-sm">R</span>
-          <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link href="/places" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Places
-          </Link>
-          <Link href="/people" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            People
-          </Link>
-        </nav>
-      </header>
+      <AppNav active="matches" />
 
       <div className="mx-auto w-full max-w-md flex-1 px-6 pb-16">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Your matches</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          People you both liked. Start a conversation whenever you&apos;re ready.
+          People you both liked. Open a chat — planning a place together starts
+          from there.
         </p>
 
         {loading ? (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compatibility, reasons, headline, passesDealbreakers, type CompatProfile } from "./compat";
+import { compatibility, reasons, headline, passesDealbreakers, scoreTier, type CompatProfile } from "./compat";
 
 function profile(overrides: Partial<CompatProfile>): CompatProfile {
   return {
@@ -95,6 +95,19 @@ describe("reasons", () => {
     const firstGood = r.findIndex((x) => x.good);
     const lastBad = r.map((x) => x.good).lastIndexOf(false);
     if (firstGood !== -1 && lastBad !== -1) expect(lastBad).toBeLessThan(firstGood);
+  });
+});
+
+describe("scoreTier", () => {
+  it("labels every score band", () => {
+    expect(scoreTier(100)).toBe("Great fit");
+    expect(scoreTier(80)).toBe("Great fit");
+    expect(scoreTier(79)).toBe("Solid fit");
+    expect(scoreTier(65)).toBe("Solid fit");
+    expect(scoreTier(64)).toBe("Mixed fit");
+    expect(scoreTier(45)).toBe("Mixed fit");
+    expect(scoreTier(44)).toBe("Long shot");
+    expect(scoreTier(0)).toBe("Long shot");
   });
 });
 

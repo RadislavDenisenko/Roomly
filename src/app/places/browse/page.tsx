@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { DottedTrail } from "@/components/MapMotif";
-import { PlacesNav } from "@/components/PlacesNav";
+import { AppNav } from "@/components/AppNav";
+import { PlacesTabs } from "@/components/PlacesTabs";
 import { isMissingTable } from "@/lib/listings";
 import {
   type Place,
@@ -124,24 +125,21 @@ export default function BrowsePlacesPage() {
 
   return (
     <main className="roomly-page flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="roomly-mark h-8 w-8 text-sm">R</span>
-          <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
-        </Link>
-        <Link href="/places/new" className="roomly-btn px-4 py-2 text-sm">
-          Post a place
-        </Link>
-      </header>
+      <AppNav active="places" />
 
       <DottedTrail height={40} className="opacity-70" />
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Places</h1>
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Places</h1>
+          <Link href="/places/new" className="text-sm font-semibold text-brick-600 hover:underline dark:text-brick-400">
+            + Post a place
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Verified places posted right here on Roomly — no scraped listings, no fakes.
         </p>
-        <PlacesNav />
+        <PlacesTabs />
         {demo && (
           <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
             ✨ Showing demo places. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to switch to real, saved data.

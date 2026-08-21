@@ -300,7 +300,7 @@ export default function PlaceDetailPage() {
             </p>
           ) : (
             <Link
-              href="/people"
+              href={`/people?place=${place.id}`}
               className="flex items-center justify-between text-sm font-semibold text-violet-600 hover:underline dark:text-violet-400"
             >
               <span>

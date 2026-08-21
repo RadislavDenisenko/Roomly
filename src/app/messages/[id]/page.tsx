@@ -173,7 +173,13 @@ export default function ConversationPage() {
         <span className="font-semibold text-zinc-900 dark:text-zinc-50">
           {other?.full_name ?? "Roommate"}
         </span>
-        <div className="relative ml-auto">
+        <Link
+          href={`/places/together?with=${otherId}`}
+          className="ml-auto flex h-9 items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/70"
+        >
+          🏠 Find a place together
+        </Link>
+        <div className="relative">
           <button type="button" aria-label="Conversation options" onClick={() => setMenuOpen((o) => !o)} className="px-2 text-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">⋯</button>
           {menuOpen && (
             <div className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">

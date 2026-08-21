@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
+import { AppNav } from "@/components/AppNav";
 import { ProfileDetail } from "@/components/ProfileDetail";
 import { mainPhoto } from "@/lib/photos";
 import { isMissingTable } from "@/lib/listings";
@@ -10,18 +12,18 @@ import {
   compatibility,
   reasons,
   passesDealbreakers,
+  scoreTier,
   type CompatProfile,
   type Dealbreakers,
 } from "@/lib/compat";
-import { groupPeopleByPlace, type PoolPerson } from "@/lib/people";
+import type { PoolPerson } from "@/lib/people";
 
 type MyProfile = CompatProfile & Dealbreakers;
-
 type LikedPlace = { id: string; name: string; city: string | null; neighborhood: string | null };
 type ScoredPerson = PoolPerson & { score: number };
-type Section = { place: LikedPlace; people: ScoredPerson[]; areaFallback?: boolean };
+type Pool = { people: ScoredPerson[]; areaFallback: boolean };
 
-// Scripted demo pools shown when the app tables haven't been created yet.
+// Scripted demo data shown when the app tables haven't been created yet.
 const DEMO_PLACES_LIKED: LikedPlace[] = [
   { id: "demo-place-1", name: "The Triangle", city: "Austin, TX", neighborhood: "Triangle State" },
   { id: "demo-place-2", name: "East 6th Lofts", city: "Austin, TX", neighborhood: "East Austin" },
@@ -73,16 +75,100 @@ function withScores(people: PoolPerson[], me: MyProfile): ScoredPerson[] {
 }
 
 export default function PeoplePage() {
+  return (
+    <Suspense fallback={<Centered>Loading people…</Centered>}>
+      <PeopleInner />
+    </Suspense>
+  );
+}
+
+function PeopleInner() {
+  const requestedPlace = useSearchParams().get("place");
   const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [meVerified, setMeVerified] = useState(false);
-  const [myId, setMyId] = useState<string | null>(null);
   const [me, setMe] = useState<MyProfile | null>(null);
   const [demo, setDemo] = useState(false);
-  const [sections, setSections] = useState<Section[]>([]);
-  const [cityWide, setCityWide] = useState<ScoredPerson[]>([]);
+  const [likedPlaces, setLikedPlaces] = useState<LikedPlace[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pools, setPools] = useState<Record<string, Pool>>({});
+  const [poolLoading, setPoolLoading] = useState(false);
+  const [cityWide, setCityWide] = useState<ScoredPerson[] | null>(null);
   const [detailPerson, setDetailPerson] = useState<ScoredPerson | null>(null);
   const [match, setMatch] = useState<ScoredPerson | null>(null);
+
+  // Last resort when a pool and its area are both empty: everyone verified.
+  const cityWideLoaded = useRef(false);
+  const loadCityWide = useCallback(async (meProfile: MyProfile, uid: string) => {
+    if (cityWideLoaded.current) return;
+    cityWideLoaded.current = true;
+    const supabase = createClient();
+    const { data: blockRows } = await supabase
+      .from("blocks")
+      .select("blocker_id, blocked_id")
+      .or(`blocker_id.eq.${uid},blocked_id.eq.${uid}`);
+    const blocked = new Set(
+      (blockRows ?? []).map((b: { blocker_id: string; blocked_id: string }) =>
+        b.blocker_id === uid ? b.blocked_id : b.blocker_id,
+      ),
+    );
+    const { data: myLikes } = await supabase.from("likes").select("liked_id").eq("liker_id", uid);
+    const liked = new Set((myLikes ?? []).map((l: { liked_id: string }) => l.liked_id));
+    const { data: myPasses } = await supabase.from("passes").select("passed_id").eq("passer_id", uid);
+    const passed = new Set((myPasses ?? []).map((p: { passed_id: string }) => p.passed_id));
+
+    const { data: others } = await supabase
+      .from("profiles")
+      .select("*")
+      .neq("id", uid)
+      .eq("people_visible", true)
+      .not("full_name", "is", null);
+    const filtered = ((others ?? []) as CompatProfile[]).filter((p) => {
+      if (p.verification_status !== "verified") return false;
+      if (blocked.has(p.id)) return false;
+      if (liked.has(p.id)) return false;
+      if (passed.has(p.id)) return false;
+      return passesDealbreakers(meProfile, p);
+    });
+    setCityWide(
+      filtered
+        .map((p) => ({ ...p, member_group: "seeker" as const, score: compatibility(meProfile, p) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 20),
+    );
+  }, []);
+
+  // Load one place's pool: the place's own pool, else people looking in its
+  // area, else (once) the city-wide everyone-on-Roomly fallback.
+  const loadPool = useCallback(
+    async (place: LikedPlace, meProfile: MyProfile, isDemo: boolean) => {
+      if (isDemo) {
+        setPools((prev) => ({
+          ...prev,
+          [place.id]: { people: withScores(DEMO_POOLS[place.id] ?? [], meProfile), areaFallback: false },
+        }));
+        return;
+      }
+      setPoolLoading(true);
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("people_for_place", { pid: place.id });
+      let people = error ? [] : ((data ?? []) as PoolPerson[]);
+      let areaFallback = false;
+      if (people.length === 0) {
+        const { data: areaData, error: areaError } = await supabase.rpc("people_for_area", {
+          p_city: place.city,
+          p_neighborhood: place.neighborhood,
+        });
+        people = areaError ? [] : ((areaData ?? []) as PoolPerson[]);
+        areaFallback = people.length > 0;
+      }
+      const scored = withScores(people, meProfile);
+      setPools((prev) => ({ ...prev, [place.id]: { people: scored, areaFallback } }));
+      setPoolLoading(false);
+      if (scored.length === 0) void loadCityWide(meProfile, meProfile.id);
+    },
+    [loadCityWide],
+  );
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -95,7 +181,6 @@ export default function PeoplePage() {
       }
       setAuthed(true);
       const uid = userData.user.id;
-      setMyId(uid);
 
       const { data: meRow, error: meError } = await supabase.from("profiles").select("*").eq("id", uid).single();
       const meProfile = (meRow ?? { id: uid }) as MyProfile;
@@ -112,12 +197,11 @@ export default function PeoplePage() {
 
       if ((meError && isMissingTable(meError)) || (prError && isMissingTable(prError))) {
         setDemo(true);
-        setSections(
-          DEMO_PLACES_LIKED.map((place) => ({
-            place,
-            people: withScores(DEMO_POOLS[place.id] ?? [], meProfile),
-          })).filter((s) => s.people.length > 0),
-        );
+        setLikedPlaces(DEMO_PLACES_LIKED);
+        const first =
+          DEMO_PLACES_LIKED.find((p) => p.id === requestedPlace) ?? DEMO_PLACES_LIKED[0];
+        setSelectedId(first.id);
+        for (const p of DEMO_PLACES_LIKED) void loadPool(p, meProfile, true);
         setLoading(false);
         return;
       }
@@ -139,102 +223,51 @@ export default function PeoplePage() {
         .in("id", likedIds);
       const byId = new Map((placeRows ?? []).map((p: LikedPlace) => [p.id, p]));
       const placesLiked = likedIds.map((id) => byId.get(id)).filter(Boolean) as LikedPlace[];
+      setLikedPlaces(placesLiked);
 
-      const pools = await Promise.all(
-        placesLiked.map(async (p) => {
-          const { data, error } = await supabase.rpc("people_for_place", { pid: p.id });
-          return { placeId: p.id, people: error ? [] : ((data ?? []) as PoolPerson[]) };
-        }),
-      );
-      const poolsByPlace: Record<string, PoolPerson[]> = {};
-      pools.forEach(({ placeId, people }) => {
-        poolsByPlace[placeId] = people;
-      });
-
-      const directSections = groupPeopleByPlace(placesLiked, poolsByPlace).map((s) => ({
-        place: s.place as LikedPlace,
-        people: withScores(s.people, meProfile),
-      }));
-      const usedIds = new Set(directSections.flatMap((s) => s.people.map((p) => p.id)));
-
-      const emptyPlaces = placesLiked.filter((p) => !directSections.some((s) => s.place.id === p.id));
-      const areaResults = await Promise.all(
-        emptyPlaces.map(async (p) => {
-          const { data, error } = await supabase.rpc("people_for_area", {
-            p_city: p.city,
-            p_neighborhood: p.neighborhood,
-          });
-          const people = error ? [] : ((data ?? []) as PoolPerson[]).filter((person) => !usedIds.has(person.id));
-          return { place: p, people };
-        }),
-      );
-      const areaSections: Section[] = [];
-      areaResults.forEach(({ place, people }) => {
-        if (people.length === 0) return;
-        people.forEach((p) => usedIds.add(p.id));
-        areaSections.push({ place, people: withScores(people, meProfile), areaFallback: true });
-      });
-
-      const allSections = [...directSections, ...areaSections];
-      setSections(allSections);
-
-      if (allSections.length === 0) {
-        const { data: blockRows } = await supabase
-          .from("blocks")
-          .select("blocker_id, blocked_id")
-          .or(`blocker_id.eq.${uid},blocked_id.eq.${uid}`);
-        const blocked = new Set(
-          (blockRows ?? []).map((b: { blocker_id: string; blocked_id: string }) =>
-            b.blocker_id === uid ? b.blocked_id : b.blocker_id,
-          ),
-        );
-        const { data: myLikes } = await supabase.from("likes").select("liked_id").eq("liker_id", uid);
-        const liked = new Set((myLikes ?? []).map((l: { liked_id: string }) => l.liked_id));
-        const { data: myPasses } = await supabase.from("passes").select("passed_id").eq("passer_id", uid);
-        const passed = new Set((myPasses ?? []).map((p: { passed_id: string }) => p.passed_id));
-
-        const { data: others } = await supabase
-          .from("profiles")
-          .select("*")
-          .neq("id", uid)
-          .eq("people_visible", true)
-          .not("full_name", "is", null);
-        const filtered = ((others ?? []) as CompatProfile[]).filter((p) => {
-          if (p.verification_status !== "verified") return false;
-          if (blocked.has(p.id)) return false;
-          if (liked.has(p.id)) return false;
-          if (passed.has(p.id)) return false;
-          return passesDealbreakers(meProfile, p);
-        });
-        const scored = filtered
-          .map((p) => ({ ...p, member_group: "seeker" as const, score: compatibility(meProfile, p) }))
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 20);
-        setCityWide(scored);
+      const first = placesLiked.find((p) => p.id === requestedPlace) ?? placesLiked[0];
+      if (first) {
+        setSelectedId(first.id);
+        await loadPool(first, meProfile, false);
       }
-
       setLoading(false);
     })();
-  }, []);
+    // requestedPlace only picks the initial chip; changing it later goes through pickPlace.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadPool]);
+
+  function pickPlace(place: LikedPlace) {
+    setSelectedId(place.id);
+    if (!pools[place.id] && me) void loadPool(place, me, demo);
+  }
+
+  const selected = likedPlaces.find((p) => p.id === selectedId) ?? null;
+  const pool = selectedId ? pools[selectedId] : undefined;
 
   function removePerson(id: string) {
-    setSections((prev) => prev.map((s) => ({ ...s, people: s.people.filter((p) => p.id !== id) })).filter((s) => s.people.length > 0));
-    setCityWide((prev) => prev.filter((p) => p.id !== id));
+    setPools((prev) => {
+      const next: Record<string, Pool> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        next[k] = { ...v, people: v.people.filter((p) => p.id !== id) };
+      }
+      return next;
+    });
+    setCityWide((prev) => (prev ? prev.filter((p) => p.id !== id) : prev));
   }
 
   async function onLike(them: ScoredPerson) {
     setDetailPerson(null);
-    if (demo || !myId) {
+    if (demo || !me) {
       removePerson(them.id);
       return;
     }
     const supabase = createClient();
-    await supabase.from("likes").upsert({ liker_id: myId, liked_id: them.id });
+    await supabase.from("likes").upsert({ liker_id: me.id, liked_id: them.id });
     const { data: back } = await supabase
       .from("likes")
       .select("liker_id")
       .eq("liker_id", them.id)
-      .eq("liked_id", myId)
+      .eq("liked_id", me.id)
       .maybeSingle();
     if (back) {
       setMatch(them);
@@ -246,9 +279,9 @@ export default function PeoplePage() {
   async function onPass(them: ScoredPerson) {
     setDetailPerson(null);
     removePerson(them.id);
-    if (demo || !myId) return;
+    if (demo || !me) return;
     const supabase = createClient();
-    await supabase.from("passes").upsert({ passer_id: myId, passed_id: them.id });
+    await supabase.from("passes").upsert({ passer_id: me.id, passed_id: them.id });
   }
 
   if (loading) return <Centered>Loading people…</Centered>;
@@ -264,24 +297,9 @@ export default function PeoplePage() {
       </Centered>
     );
 
-  const hasContent = sections.length > 0 || cityWide.length > 0;
-
   return (
     <main className="roomly-page flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="roomly-mark h-8 w-8 text-sm">R</span>
-          <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link href="/places" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Places
-          </Link>
-          <Link href="/matches" className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Matches
-          </Link>
-        </nav>
-      </header>
+      <AppNav active="people" />
 
       <div className="relative mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
         {match && (
@@ -306,65 +324,103 @@ export default function PeoplePage() {
         )}
 
         {demo && (
-          <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
-            ✨ Showing demo people. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to switch to real, saved data.
+          <div className="mt-4 rounded-2xl border border-brick-200 bg-brick-50 px-4 py-3 text-sm text-brick-800 dark:border-brick-900/50 dark:bg-brick-950/40 dark:text-brick-200">
+            ✨ Showing demo people. Run <code className="rounded bg-brick-100 px-1 py-0.5 font-mono text-xs dark:bg-brick-900/50">supabase/schema.sql</code> to switch to real, saved data.
           </div>
         )}
 
-        {!meVerified ? (
+        {!demo && !meVerified ? (
           <div className="mt-10 flex flex-col items-center text-center">
             <span className="text-4xl" aria-hidden="true">🛡️</span>
             <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Get verified to see people</p>
             <p className="mt-2 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">Roomly only shows you verified people — and only verified people see you. It takes a minute.</p>
             <Link href="/verify" className="roomly-btn mt-6 h-11 px-6 text-sm">Verify my identity</Link>
           </div>
-        ) : !hasContent ? (
+        ) : likedPlaces.length === 0 ? (
           <div className="mt-10 rounded-3xl border border-zinc-200 bg-white/70 p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/70">
-            <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Like places first.</p>
+            <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Step 1 comes first: like a place.</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              People who want the same places show up here.
+              People unlock per apartment — like a place you&apos;d live in, and
+              everyone who wants it shows up here.
             </p>
             <Link href="/places" className="roomly-btn mt-6 h-11 px-6 text-sm">
               Swipe places
             </Link>
           </div>
         ) : (
-          <div className="mt-6 space-y-8">
-            {sections.map((s) => (
-              <section key={s.place.id}>
+          <>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              Who wants your places
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Pick one of your liked places to see its people, ranked by how well
+              you&apos;d actually live together.
+            </p>
+
+            {/* place picker */}
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+              {likedPlaces.map((p) => {
+                const active = p.id === selectedId;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => pickPlace(p)}
+                    className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                      active
+                        ? "bg-brick-600 text-white shadow-sm shadow-brick-900/20"
+                        : "border border-zinc-200 text-zinc-600 hover:border-brick-300 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-brick-700"
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {selected && (
+              <section className="mt-6">
                 <div className="flex items-baseline justify-between">
-                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{s.place.name}</h2>
-                  <Link href={`/places/${s.place.id}`} className="text-xs font-medium text-violet-600 hover:underline dark:text-violet-400">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{selected.name}</h2>
+                  <Link href={`/places/${selected.id}`} className="text-xs font-medium text-brick-600 hover:underline dark:text-brick-400">
                     View place
                   </Link>
                 </div>
-                {s.areaFallback && (
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Nobody else has swiped on {s.place.name} yet — people looking in {s.place.neighborhood ?? s.place.city ?? "the area"}:
+
+                {poolLoading || !pool ? (
+                  <p className="mt-6 text-center text-sm text-zinc-500">Finding people…</p>
+                ) : pool.people.length > 0 ? (
+                  <>
+                    {pool.areaFallback && (
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Nobody else has swiped on {selected.name} yet — people looking in {selected.neighborhood ?? selected.city ?? "the area"}:
+                      </p>
+                    )}
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {pool.people.map((p) => (
+                        <PersonCard key={p.id} person={p} onOpen={() => setDetailPerson(p)} />
+                      ))}
+                    </div>
+                  </>
+                ) : cityWide && cityWide.length > 0 ? (
+                  <>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                      You&apos;re first on {selected.name} — meanwhile, here&apos;s everyone verified on Roomly:
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {cityWide.map((p) => (
+                        <PersonCard key={p.id} person={p} onOpen={() => setDetailPerson(p)} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                    You&apos;re first in line here — check back soon.
                   </p>
                 )}
-                <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                  {s.people.map((p) => (
-                    <PersonCard key={p.id} person={p} onOpen={() => setDetailPerson(p)} />
-                  ))}
-                </div>
-              </section>
-            ))}
-
-            {cityWide.length > 0 && (
-              <section>
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Everyone on Roomly</h2>
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  Here&apos;s everyone verified on Roomly for now.
-                </p>
-                <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                  {cityWide.map((p) => (
-                    <PersonCard key={p.id} person={p} onOpen={() => setDetailPerson(p)} />
-                  ))}
-                </div>
               </section>
             )}
-          </div>
+          </>
         )}
       </div>
 
@@ -403,7 +459,7 @@ function PersonCard({ person, onOpen }: { person: ScoredPerson; onOpen: () => vo
     <button
       type="button"
       onClick={onOpen}
-      className="roomly-card-in flex w-40 shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/80"
+      className="roomly-card-in flex w-full flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brick-500/10 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900/80"
     >
       <div className="relative aspect-square w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -422,7 +478,7 @@ function PersonCard({ person, onOpen }: { person: ScoredPerson; onOpen: () => vo
           {person.full_name}
           {person.age ? `, ${person.age}` : ""}
         </p>
-        {person.city && <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{person.city}</p>}
+        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{scoreTier(person.score)}</p>
       </div>
     </button>
   );
@@ -435,7 +491,7 @@ function Avatar({ name, url, large }: { name: string | null; url: string | null;
     return <img src={url} alt={name ?? "avatar"} className={`${size} shrink-0 rounded-full object-cover`} />;
   }
   return (
-    <div className={`${size} flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 font-bold text-white`}>
+    <div className={`${size} flex shrink-0 items-center justify-center rounded-full bg-brick-600 font-bold text-white`}>
       {(name ?? "?").charAt(0).toUpperCase()}
     </div>
   );

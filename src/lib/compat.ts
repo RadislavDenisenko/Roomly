@@ -251,3 +251,11 @@ export function headline(score: number, why: Reason[]): string {
   const top = why.find((r) => r.good);
   return top ? top.text : `${score}% match`;
 }
+
+// Human label for the score, so a number always comes with a read on it.
+export function scoreTier(score: number): string {
+  if (score >= 80) return "Great fit";
+  if (score >= 65) return "Solid fit";
+  if (score >= 45) return "Mixed fit";
+  return "Long shot";
+}

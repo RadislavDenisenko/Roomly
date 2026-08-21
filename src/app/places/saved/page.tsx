@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { DottedTrail } from "@/components/MapMotif";
-import { PlacesNav } from "@/components/PlacesNav";
+import { AppNav } from "@/components/AppNav";
+import { PlacesTabs } from "@/components/PlacesTabs";
 import {
   type Listing,
   listingMainPhoto,
@@ -17,6 +18,7 @@ import {
   getDemoSaved,
   setDemoSaved,
 } from "@/lib/listings";
+import { type Place, placeMainPhoto, formatRentRange } from "@/lib/places";
 
 export default function SavedPage() {
   const router = useRouter();
@@ -25,6 +27,7 @@ export default function SavedPage() {
   const [demo, setDemo] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [saved, setSaved] = useState<Listing[]>([]);
+  const [likedPlaces, setLikedPlaces] = useState<Place[]>([]);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -37,6 +40,20 @@ export default function SavedPage() {
       }
       setAuthed(true);
       setMyId(userData.user.id);
+
+      // Places you liked while swiping — your matched apartments.
+      const { data: likedRows } = await supabase
+        .from("place_reactions")
+        .select("place_id, created_at")
+        .eq("user_id", userData.user.id)
+        .eq("reaction", "like")
+        .order("created_at", { ascending: false });
+      const likedIds = (likedRows ?? []).map((r: { place_id: string }) => r.place_id);
+      if (likedIds.length > 0) {
+        const { data: placeRows } = await supabase.from("places").select("*").in("id", likedIds);
+        const byId = new Map(((placeRows ?? []) as Place[]).map((p) => [p.id, p]));
+        setLikedPlaces(likedIds.map((id) => byId.get(id)).filter(Boolean) as Place[]);
+      }
 
       const { data, error } = await supabase
         .from("saved_listings")
@@ -76,26 +93,25 @@ export default function SavedPage() {
     await supabase.from("saved_listings").delete().eq("user_id", myId).eq("listing_id", id);
   }
 
+  async function unlikePlace(id: string) {
+    setLikedPlaces((s) => s.filter((p) => p.id !== id));
+    if (demo || !myId) return;
+    const supabase = createClient();
+    await supabase.from("place_reactions").delete().eq("user_id", myId).eq("place_id", id);
+  }
+
   return (
     <main className="roomly-page flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="roomly-mark h-8 w-8 text-sm">R</span>
-          <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
-        </Link>
-        <Link href="/places/new" className="roomly-btn px-4 py-2 text-sm">
-          Post a place
-        </Link>
-      </header>
+      <AppNav active="places" />
 
       <DottedTrail variant="arc" height={40} className="opacity-70" />
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-6 pb-16">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Saved places</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Liked</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Every apartment you&apos;ve saved, in one spot.
+          The places you&apos;ve matched with — each one is a door to its people.
         </p>
-        <PlacesNav />
+        <PlacesTabs />
 
         {loading ? (
           <p className="mt-10 text-center text-sm text-zinc-500">Loading…</p>
@@ -103,17 +119,68 @@ export default function SavedPage() {
           <Note>Accounts aren&apos;t connected yet — see SETUP.md.</Note>
         ) : !authed ? (
           <div className="mt-10 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Log in to see your saved places.</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Log in to see your liked places.</p>
             <Link href="/login" className="roomly-btn mt-4 h-11 px-6 text-sm">Go to log in</Link>
           </div>
-        ) : saved.length === 0 ? (
+        ) : likedPlaces.length === 0 && saved.length === 0 ? (
           <div className="mt-10 text-center">
-            <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">No saved places yet.</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Save apartments from inside a place page — open a place, then tap 🤍 on a unit.</p>
-            <Link href="/places/browse" className="roomly-btn mt-6 h-11 px-6 text-sm">Browse places</Link>
+            <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Nothing liked yet.</p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Swipe places you&apos;d live in — they land here, along with the people
+              who want them too.
+            </p>
+            <Link href="/places" className="roomly-btn mt-6 h-11 px-6 text-sm">Swipe places</Link>
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <>
+            {likedPlaces.length > 0 && (
+              <section className="mt-6">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Your matched places
+                </h2>
+                <div className="mt-3 space-y-3">
+                  {likedPlaces.map((p, i) => (
+                    <div
+                      key={p.id}
+                      style={{ animationDelay: `${i * 50}ms` }}
+                      className="roomly-card-in flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/80 p-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80"
+                    >
+                      <Link href={`/places/${p.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={placeMainPhoto(p)} alt={p.name} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">{p.name}</p>
+                          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                            {[p.neighborhood, p.city].filter(Boolean).join(", ")} · {formatRentRange(p.rent_min, p.rent_max)}
+                          </p>
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/people?place=${p.id}`}
+                        className="shrink-0 rounded-full bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white transition-transform hover:scale-105 active:scale-95"
+                      >
+                        Meet people →
+                      </Link>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${p.name} from liked`}
+                        onClick={() => unlikePlace(p.id)}
+                        className="shrink-0 px-1 text-zinc-400 transition-colors hover:text-zinc-700 dark:hover:text-zinc-200"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {saved.length > 0 && (
+              <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Saved units
+              </h2>
+            )}
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {saved.map((l, i) => (
               <article
                 key={l.id}
@@ -161,7 +228,8 @@ export default function SavedPage() {
                 </div>
               </article>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </main>

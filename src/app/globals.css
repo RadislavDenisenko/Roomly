@@ -121,6 +121,30 @@ h1, h2, h3, .font-display {
   .roomly-btn:hover, .roomly-btn:active { transform: none !important; }
 }
 
+/* ---- Swipe-card flip: place front, its people on the back ----
+   Each face rotates itself (no preserve-3d parent): a rotated ancestor breaks
+   pointer hit-testing in Chromium, and this way the visible face always rests
+   at rotateY(0) in normal space, so its buttons just work. */
+.roomly-flip-scene { perspective: 1200px; }
+.roomly-flip { position: relative; }
+.roomly-flip-front,
+.roomly-flip-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.roomly-flip-front { transform: rotateY(0); }
+.roomly-flip-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(-180deg);
+}
+.roomly-flip.is-flipped .roomly-flip-front { transform: rotateY(180deg); }
+.roomly-flip.is-flipped .roomly-flip-back { transform: rotateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .roomly-flip-front, .roomly-flip-back { transition: none !important; }
+}
+
 /* ---- MapMotif: dotted treasure-trail connectors + map pins ---- */
 @keyframes mm-march { to { stroke-dashoffset: -200; } }
 @keyframes mm-fade  { from { opacity: 0; } to { opacity: 1; } }

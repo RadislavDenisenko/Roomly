@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { mainPhoto } from "@/lib/photos";
 import { DottedTrail } from "@/components/MapMotif";
-import { PlacesNav } from "@/components/PlacesNav";
 import {
   type Listing,
   listingMainPhoto,
@@ -22,6 +22,16 @@ const DEMO_MATCH: Match = { id: "demo-match-1", full_name: "Jordan Pierce", avat
 const DEMO_MATCH_LIKES = new Set(["demo-1", "demo-4"]);
 
 export default function TogetherPage() {
+  return (
+    <Suspense fallback={null}>
+      <TogetherInner />
+    </Suspense>
+  );
+}
+
+function TogetherInner() {
+  // Together is reached from a match's chat; ?with= preselects that person.
+  const withParam = useSearchParams().get("with");
   const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
@@ -76,7 +86,10 @@ export default function TogetherPage() {
       }
       if (isDemo && people.length === 0) people = [DEMO_MATCH];
       setMatches(people);
-      const firstMatch = people[0]?.id ?? null;
+      const firstMatch =
+        (withParam && people.some((p) => p.id === withParam) ? withParam : null) ??
+        people[0]?.id ??
+        null;
       setSelected(firstMatch);
 
       // selected match's liked listings
@@ -102,7 +115,7 @@ export default function TogetherPage() {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [withParam]);
 
   // load the selected match's liked listing ids
   const loadMatchLikes = useCallback(
@@ -149,8 +162,11 @@ export default function TogetherPage() {
   return (
     <main className="roomly-page flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 py-5">
-        <Link href="/places/browse" className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          ← Places
+        <Link
+          href={withParam ? `/messages/${withParam}` : "/matches"}
+          className="text-sm font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          {withParam ? "← Back to chat" : "← Matches"}
         </Link>
         <span className="roomly-mark h-8 w-8 text-sm">R</span>
       </header>
@@ -162,7 +178,6 @@ export default function TogetherPage() {
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           React to places with a matched roommate — the ones you both like land in your shared shortlist.
         </p>
-        <PlacesNav />
         {demo && (
           <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
             ✨ Demo mode — {DEMO_MATCH.full_name} has already liked a couple of places. Like them too to see the shared shortlist fill up. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to go live.

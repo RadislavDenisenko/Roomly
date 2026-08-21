@@ -4,10 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
-import { PlacesNav } from "@/components/PlacesNav";
+import { AppNav } from "@/components/AppNav";
+import { PlacesTabs } from "@/components/PlacesTabs";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { isMissingTable } from "@/lib/listings";
 import { peopleConsentSeen, markPeopleConsentSeen } from "@/lib/consent";
+import { mainPhoto } from "@/lib/photos";
+import {
+  compatibility,
+  passesDealbreakers,
+  scoreTier,
+  type CompatProfile,
+  type Dealbreakers,
+} from "@/lib/compat";
+import type { PoolPerson } from "@/lib/people";
 import {
   type Place,
   placeMainPhoto,
@@ -19,6 +29,9 @@ import {
   setDemoPlaceReactions,
 } from "@/lib/places";
 
+type MyProfile = CompatProfile & Dealbreakers;
+type PoolPreview = { loading: boolean; count: number; top: (PoolPerson & { score: number })[] };
+
 export default function PlacesSwipePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(supabaseConfigured);
@@ -26,8 +39,11 @@ export default function PlacesSwipePage() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [index, setIndex] = useState(0);
   const [demo, setDemo] = useState(false);
-  const [myId, setMyId] = useState<string | null>(null);
+  const [me, setMe] = useState<MyProfile | null>(null);
+  const [meVerified, setMeVerified] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
+  // Set once a place is liked: the card flips to show who wants it too.
+  const [flip, setFlip] = useState<PoolPreview | null>(null);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -40,7 +56,11 @@ export default function PlacesSwipePage() {
       }
       setAuthed(true);
       const uid = userData.user.id;
-      setMyId(uid);
+
+      const { data: meRow } = await supabase.from("profiles").select("*").eq("id", uid).single();
+      const meProfile = (meRow ?? { id: uid }) as MyProfile;
+      setMe(meProfile);
+      setMeVerified(meProfile.verification_status === "verified");
 
       const { data, error } = await supabase
         .from("places")
@@ -66,23 +86,47 @@ export default function PlacesSwipePage() {
     })();
   }, []);
 
+  async function loadPool(place: Place) {
+    setFlip({ loading: true, count: 0, top: [] });
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("people_for_place", { pid: place.id });
+    const pool = error || !me ? [] : ((data ?? []) as PoolPerson[]).filter((p) => passesDealbreakers(me, p));
+    const scored = pool
+      .map((p) => ({ ...p, score: compatibility(me as MyProfile, p) }))
+      .sort((a, b) => b.score - a.score);
+    setFlip({ loading: false, count: scored.length, top: scored.slice(0, 3) });
+  }
+
   async function react(place: Place, reaction: "like" | "pass") {
     if (demo) {
       setDemoPlaceReactions({ ...getDemoPlaceReactions(), [place.id]: reaction });
-    } else if (myId) {
-      const supabase = createClient();
-      await supabase.from("place_reactions").upsert({ user_id: myId, place_id: place.id, reaction });
+      setIndex((i) => i + 1);
+      return;
     }
-    if (reaction === "like" && !peopleConsentSeen()) {
+    if (me) {
+      const supabase = createClient();
+      await supabase.from("place_reactions").upsert({ user_id: me.id, place_id: place.id, reaction });
+    }
+    if (reaction === "pass") {
+      setIndex((i) => i + 1);
+      return;
+    }
+    if (!peopleConsentSeen()) {
       setShowConsent(true);
       return;
     }
-    setIndex((i) => i + 1);
+    void loadPool(place);
   }
 
   function dismissConsent() {
     markPeopleConsentSeen();
     setShowConsent(false);
+    const current = places[index];
+    if (current) void loadPool(current);
+  }
+
+  function keepSwiping() {
+    setFlip(null);
     setIndex((i) => i + 1);
   }
 
@@ -103,24 +147,16 @@ export default function PlacesSwipePage() {
 
   return (
     <main className="roomly-page flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-md items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="roomly-mark h-8 w-8 text-sm">R</span>
-          <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Roomly</span>
-        </Link>
-        <Link href="/matches" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-          Matches
-        </Link>
-      </header>
+      <AppNav active="places" />
 
       <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col items-center px-6 pb-16">
         <div className="w-full">
-          <PlacesNav />
+          <PlacesTabs />
         </div>
 
         {demo && (
-          <div className="mt-4 w-full rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-200">
-            ✨ Showing demo places. Run <code className="rounded bg-violet-100 px-1 py-0.5 font-mono text-xs dark:bg-violet-900/50">supabase/schema.sql</code> to switch to real, saved data.
+          <div className="mt-4 w-full rounded-2xl border border-brick-200 bg-brick-50 px-4 py-3 text-sm text-brick-800 dark:border-brick-900/50 dark:bg-brick-950/40 dark:text-brick-200">
+            ✨ Showing demo places. Run <code className="rounded bg-brick-100 px-1 py-0.5 font-mono text-xs dark:bg-brick-900/50">supabase/schema.sql</code> to switch to real, saved data.
           </div>
         )}
 
@@ -144,72 +180,162 @@ export default function PlacesSwipePage() {
               You&apos;ve seen every place for now.
             </p>
             <p className="mt-2 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
-              Check Browse for the full directory, or see who else is looking.
+              Check Browse for the full directory, or your Liked places to meet
+              the people who want them too.
             </p>
             <div className="mt-6 flex gap-3">
               <Link href="/places/browse" className="roomly-btn h-11 px-6 text-sm">
                 Browse places
               </Link>
               <Link
-                href="/people"
+                href="/places/saved"
                 className="flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                See people
+                Liked places
               </Link>
             </div>
           </div>
         ) : (
           <>
-            <div
-              key={current.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => router.push(`/places/${current.id}`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  router.push(`/places/${current.id}`);
-                }
-              }}
-              className="roomly-card-in mt-6 w-full cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur transition-shadow duration-300 hover:shadow-xl hover:shadow-violet-500/10 dark:border-zinc-800 dark:bg-zinc-900/80"
-            >
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={placeMainPhoto(current)} alt={current.name} className="h-full w-full object-cover" />
-                <div className="absolute left-3 top-3 flex items-center gap-1.5">
-                  {current.curated && <VerifiedBadge label="Curated" />}
-                  <span className="roomly-badge inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
-                    {placeKindLabel(current.kind)}
-                  </span>
+            {/* card-in lives on the scene, not the face — its transform
+                animation would otherwise pin the face and block the flip */}
+            <div className="roomly-flip-scene roomly-card-in mt-6 w-full">
+              <div className={`roomly-flip ${flip ? "is-flipped" : ""}`}>
+                {/* Front: the place */}
+                <div
+                  key={current.id}
+                  role="button"
+                  tabIndex={flip ? -1 : 0}
+                  onClick={() => !flip && router.push(`/places/${current.id}`)}
+                  onKeyDown={(e) => {
+                    if (!flip && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      router.push(`/places/${current.id}`);
+                    }
+                  }}
+                  className={`roomly-flip-front w-full cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-white/80 text-left shadow-sm backdrop-blur hover:shadow-xl hover:shadow-brick-500/10 dark:border-zinc-800 dark:bg-zinc-900/80 ${
+                    flip ? "pointer-events-none" : ""
+                  }`}
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={placeMainPhoto(current)} alt={current.name} className="h-full w-full object-cover" />
+                    <div className="absolute left-3 top-3 flex items-center gap-1.5">
+                      {current.curated && <VerifiedBadge label="Curated" />}
+                      <span className="roomly-badge inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
+                        {placeKindLabel(current.kind)}
+                      </span>
+                    </div>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
+                      <h2 className="text-xl font-bold text-white">{current.name}</h2>
+                      <p className="mt-0.5 text-sm text-zinc-200">
+                        {[current.neighborhood, current.city].filter(Boolean).join(", ") || "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-lg font-black text-brick-600 dark:text-brick-400">
+                      {formatRentRange(current.rent_min, current.rent_max)}
+                    </p>
+                    <p className="mt-3 text-center text-xs font-medium text-brick-600 dark:text-brick-400">
+                      Tap to see details →
+                    </p>
+                  </div>
                 </div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4 pt-12">
-                  <h2 className="text-xl font-bold text-white">{current.name}</h2>
-                  <p className="mt-0.5 text-sm text-zinc-200">
-                    {[current.neighborhood, current.city].filter(Boolean).join(", ") || "—"}
-                  </p>
-                </div>
-              </div>
-              <div className="p-4">
-                <p className="text-lg font-black text-violet-600 dark:text-violet-400">
-                  {formatRentRange(current.rent_min, current.rent_max)}
-                </p>
-                <p className="mt-3 text-center text-xs font-medium text-violet-600 dark:text-violet-400">
-                  Tap to see details →
-                </p>
+
+                {/* Back: who wants it too */}
+                {flip && (
+                  <div className="roomly-flip-back flex flex-col overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-700 p-6 text-emerald-50 dark:border-emerald-900">
+                    {flip.loading ? (
+                      <div className="flex flex-1 flex-col items-center justify-center text-center">
+                        <span className="animate-pulse text-4xl" aria-hidden>🔎</span>
+                        <p className="mt-4 font-semibold">Checking who wants {current.name}…</p>
+                      </div>
+                    ) : !meVerified ? (
+                      <div className="flex flex-1 flex-col items-center justify-center text-center">
+                        <span className="text-4xl" aria-hidden>🛡️</span>
+                        <p className="mt-4 text-xl font-bold">Liked! Now meet its people.</p>
+                        <p className="mt-2 text-sm text-emerald-100">
+                          Verify your identity (free, a minute) to see who wants {current.name} too.
+                        </p>
+                        <Link href="/verify" className="mt-5 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-bold text-emerald-700 hover:bg-emerald-50">
+                          Verify me
+                        </Link>
+                        <button type="button" onClick={keepSwiping} className="mt-3 text-sm font-medium text-emerald-100 underline">
+                          Keep swiping
+                        </button>
+                      </div>
+                    ) : flip.count === 0 ? (
+                      <div className="flex flex-1 flex-col items-center justify-center text-center">
+                        <span className="text-4xl" aria-hidden>🌱</span>
+                        <p className="mt-4 text-xl font-bold">You&apos;re first in line.</p>
+                        <p className="mt-2 text-sm text-emerald-100">
+                          Nobody else has claimed {current.name} yet — when someone does,
+                          they&apos;ll show up in your People step.
+                        </p>
+                        <button type="button" onClick={keepSwiping} className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-bold text-emerald-700 hover:bg-emerald-50">
+                          Keep swiping
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-1 flex-col">
+                        <p className="text-sm font-semibold uppercase tracking-widest text-emerald-200">
+                          It&apos;s a place match
+                        </p>
+                        <h2 className="mt-1 text-2xl font-bold text-white">
+                          {flip.count} {flip.count === 1 ? "person wants" : "people want"} {current.name} too
+                        </h2>
+                        <div className="mt-5 flex flex-1 flex-col justify-center gap-3">
+                          {flip.top.map((p) => (
+                            <div key={p.id} className="flex items-center gap-3 rounded-2xl bg-white/10 p-2.5 backdrop-blur">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={mainPhoto(p)} alt={p.full_name ?? "Profile"} className="h-11 w-11 rounded-full object-cover" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-white">
+                                  {p.full_name}
+                                  {p.age ? `, ${p.age}` : ""}
+                                </p>
+                                <p className="text-xs text-emerald-200">
+                                  {p.member_group === "resident" ? "Lives here · " : ""}
+                                  {scoreTier(p.score)}
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-emerald-700">
+                                {p.score}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/people?place=${current.id}`)}
+                          className="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-bold text-emerald-700 transition-transform hover:scale-[1.02] active:scale-95"
+                        >
+                          Meet them →
+                        </button>
+                        <button type="button" onClick={keepSwiping} className="mt-3 text-center text-sm font-medium text-emerald-100 underline">
+                          Keep swiping
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="mt-6 flex w-full gap-4">
-              <button
-                onClick={() => react(current, "pass")}
-                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Pass 👎
-              </button>
-              <button onClick={() => react(current, "like")} className="roomly-btn h-14 flex-1 text-base">
-                Like ❤️
-              </button>
-            </div>
+            {!flip && (
+              <div className="mt-6 flex w-full gap-4">
+                <button
+                  onClick={() => react(current, "pass")}
+                  className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Pass 👎
+                </button>
+                <button onClick={() => react(current, "like")} className="roomly-btn h-14 flex-1 text-base">
+                  Like ❤️
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
