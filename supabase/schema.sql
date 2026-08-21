@@ -48,6 +48,11 @@ alter table public.profiles
   add column if not exists id_verified boolean default false,
   add column if not exists verified_at timestamptz;
 
+-- Housing search preferences (the "Zillow step" between quiz and deck).
+alter table public.profiles
+  add column if not exists pref_areas text[] default '{}',
+  add column if not exists pref_tags text[] default '{}';
+
 -- Lifestyle axes for "the awkward questions" (fridge rules, dishes, chores,
 -- overnight guests, noise, weekends). All optional; scored in src/lib/compat.ts.
 alter table public.profiles
@@ -489,6 +494,9 @@ create table if not exists public.places (
   curated boolean default false,
   sponsored boolean default false -- dormant monetization flag, unused in UI
 );
+-- Amenity tags ("what's nearby"), matched against profiles.pref_tags.
+alter table public.places
+  add column if not exists tags text[] default '{}';
 alter table public.places enable row level security;
 
 drop policy if exists "Authenticated users can view places" on public.places;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
-import { LifestyleQuiz, answersToProfileUpdate, type QuizAnswers } from "@/components/LifestyleQuiz";
+import { LifestyleQuiz, type QuizAnswers } from "@/components/LifestyleQuiz";
 
 // Fallback shared demo account (created by supabase/seed.sql + README setup),
 // used only if the per-visitor throwaway signup fails (e.g. rate limits).
@@ -67,12 +67,12 @@ export default function DemoQuizPage() {
 
     // Apply the quiz to the demo profile so pools, scores, and "why you match"
     // reflect what was just answered. Skipped questions stay as seeded.
-    const update = answersToProfileUpdate(finalAnswers);
-    if (Object.keys(update).length > 0) {
+    if (Object.keys(finalAnswers).length > 0) {
       // Non-fatal: the demo still works on seeded values if this write fails.
-      await supabase.from("profiles").update(update).eq("id", userId);
+      await supabase.from("profiles").update(finalAnswers).eq("id", userId);
     }
-    router.push("/places");
+    // Next: the "Your search" step, so the deck opens filtered, not random.
+    router.push("/preferences");
   }
 
   if (phase === "intro") {

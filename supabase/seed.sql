@@ -153,6 +153,22 @@ select 'Cherrywood Court', 'house', 'Austin, TX', 'Cherrywood', 1000, 1700, true
   array['https://picsum.photos/seed/roomly-place-cherrywood-a/800/1000','https://picsum.photos/seed/roomly-place-cherrywood-b/800/1000']
 where not exists (select 1 from public.places where name = 'Cherrywood Court');
 
+-- 6b) Amenity tags for the curated directory (matched against pref_tags).
+update public.places p set tags = d.tags::text[]
+from (values
+  ('The Triangle',           '{groceries,parks,transit,coffee}'),
+  ('East 6th Lofts',         '{nightlife,coffee,transit,gym}'),
+  ('Zilker Terrace',         '{parks,dog_park,quiet,coffee}'),
+  ('Hyde Park Commons',      '{campus,coffee,quiet,groceries}'),
+  ('Riverside Landing',      '{transit,parks,gym}'),
+  ('Domain Northside Flats', '{gym,groceries,nightlife,transit}'),
+  ('Aldrich House',          '{parks,groceries,dog_park,coffee}'),
+  ('South Congress Studios', '{nightlife,coffee,parks}'),
+  ('Barton Creek Villas',    '{parks,quiet,gym,dog_park}'),
+  ('Cherrywood Court',       '{quiet,coffee,campus,parks}')
+) as d(name, tags)
+where p.name = d.name;
+
 -- 7) Seed place likes so the apartment-first People pools have real pools.
 --    maya shares The Triangle + Hyde Park Commons with several other seeded
 --    users; the rest are scattered across the directory.

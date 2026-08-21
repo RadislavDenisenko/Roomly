@@ -12,7 +12,8 @@ type Question = {
 
 // One awkward conversation per screen. The heavy hitters open — fridge,
 // dishes, trash, tidiness are what actually blow up roommate pairs — and the
-// softer social questions close the quiz. Budget stays last ("Last one…").
+// softer social questions close the quiz. Rent and areas are NOT here: they
+// belong to the "Your search" step (/preferences) that follows.
 export const QUESTIONS: Question[] = [
   {
     key: "food_sharing",
@@ -102,7 +103,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "weekend_style",
-    title: "Friday night, ideal version:",
+    title: "Last one — Friday night, ideal version:",
     options: [
       { value: "out", emoji: "🪩", label: "Out out. Home at 3" },
       { value: "host", emoji: "🍕", label: "A few people over at ours" },
@@ -110,31 +111,10 @@ export const QUESTIONS: Question[] = [
       { value: "depends", emoji: "📅", label: "Depends what week it's been" },
     ],
   },
-  {
-    key: "budget",
-    title: "Last one — your monthly rent zone?",
-    options: [
-      { value: "500-800", emoji: "💵", label: "Under $800" },
-      { value: "800-1200", emoji: "💰", label: "$800 – $1,200" },
-      { value: "1200-1600", emoji: "🏦", label: "$1,200 – $1,600" },
-      { value: "1600-2400", emoji: "💎", label: "$1,600+" },
-    ],
-  },
 ];
 
+// Answer keys ARE profiles-table columns, so answers save with a plain spread.
 export type QuizAnswers = Record<string, string | number | boolean>;
-
-// Quiz answers -> profiles-table columns ("budget" expands to min/max).
-export function answersToProfileUpdate(answers: QuizAnswers): QuizAnswers {
-  const { budget, ...profileFields } = answers;
-  const update: QuizAnswers = { ...profileFields };
-  if (typeof budget === "string") {
-    const [min, max] = budget.split("-").map(Number);
-    update.budget_min = min;
-    update.budget_max = max;
-  }
-  return update;
-}
 
 /**
  * The awkward-questions quiz, one screen at a time. Owns only the questions;

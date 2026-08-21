@@ -20,16 +20,23 @@ import {
 import type { PoolPerson } from "@/lib/people";
 import {
   type Place,
+  type SearchPrefs,
   placeMainPhoto,
   placeKindLabel,
   formatRentRange,
   deckOrder,
+  personalizedDeck,
+  hasSearchPrefs,
+  matchedTagLabels,
   DEMO_PLACES,
   getDemoPlaceReactions,
   setDemoPlaceReactions,
 } from "@/lib/places";
 
-type MyProfile = CompatProfile & Dealbreakers;
+type MyProfile = CompatProfile &
+  Dealbreakers & { pref_areas?: string[] | null; pref_tags?: string[] | null };
+
+const NO_PREFS: SearchPrefs = { budget_min: null, budget_max: null, pref_areas: null, pref_tags: null };
 type PoolPreview = { loading: boolean; count: number; top: (PoolPerson & { score: number })[] };
 
 export default function PlacesSwipePage() {
@@ -44,6 +51,9 @@ export default function PlacesSwipePage() {
   const [showConsent, setShowConsent] = useState(false);
   // Set once a place is liked: the card flips to show who wants it too.
   const [flip, setFlip] = useState<PoolPreview | null>(null);
+  const [prefs, setPrefs] = useState<SearchPrefs>(NO_PREFS);
+  // True when the search filters matched nothing (vs. having swiped it all).
+  const [filteredOut, setFilteredOut] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -81,7 +91,20 @@ export default function PlacesSwipePage() {
         .select("place_id")
         .eq("user_id", uid);
       const reacted = new Set((reactionRows ?? []).map((r: { place_id: string }) => r.place_id));
-      setPlaces(deckOrder((data ?? []) as Place[]).filter((p) => !reacted.has(p.id)));
+
+      // The deck is your search, not a shuffle: filtered by budget + areas,
+      // ranked by how many wanted amenities a place has.
+      const myPrefs: SearchPrefs = {
+        budget_min: meProfile.budget_min ?? null,
+        budget_max: meProfile.budget_max ?? null,
+        pref_areas: meProfile.pref_areas ?? null,
+        pref_tags: meProfile.pref_tags ?? null,
+      };
+      setPrefs(myPrefs);
+      const all = (data ?? []) as Place[];
+      const personalized = personalizedDeck(all, myPrefs);
+      setFilteredOut(all.length > 0 && personalized.length === 0);
+      setPlaces(personalized.filter((p) => !reacted.has(p.id)));
       setLoading(false);
     })();
   }, []);
@@ -154,6 +177,38 @@ export default function PlacesSwipePage() {
           <PlacesTabs />
         </div>
 
+        {/* Your-search summary: the deck is filtered by this, not random. */}
+        {!demo && (
+          <div className="mt-4 flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white/70 px-4 py-2.5 text-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+            {hasSearchPrefs(prefs) ? (
+              <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">
+                {[
+                  prefs.budget_max != null ? `$${prefs.budget_min ?? 0}–${prefs.budget_max}` : null,
+                  prefs.pref_areas && prefs.pref_areas.length > 0
+                    ? prefs.pref_areas.slice(0, 2).join(", ") +
+                      (prefs.pref_areas.length > 2 ? ` +${prefs.pref_areas.length - 2}` : "")
+                    : "Anywhere in Austin",
+                  prefs.pref_tags && prefs.pref_tags.length > 0
+                    ? `${prefs.pref_tags.length} nearby ${prefs.pref_tags.length === 1 ? "need" : "needs"}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            ) : (
+              <span className="text-zinc-500 dark:text-zinc-400">
+                Showing everything — set your search to narrow it.
+              </span>
+            )}
+            <Link
+              href="/preferences"
+              className="shrink-0 font-semibold text-brick-600 hover:underline dark:text-brick-400"
+            >
+              {hasSearchPrefs(prefs) ? "Edit" : "Set search"}
+            </Link>
+          </div>
+        )}
+
         {demo && (
           <div className="mt-4 w-full rounded-2xl border border-brick-200 bg-brick-50 px-4 py-3 text-sm text-brick-800 dark:border-brick-900/50 dark:bg-brick-950/40 dark:text-brick-200">
             ✨ Showing demo places. Run <code className="rounded bg-brick-100 px-1 py-0.5 font-mono text-xs dark:bg-brick-900/50">supabase/schema.sql</code> to switch to real, saved data.
@@ -175,26 +230,41 @@ export default function PlacesSwipePage() {
         )}
 
         {!current ? (
-          <div className="mt-10 flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              You&apos;ve seen every place for now.
-            </p>
-            <p className="mt-2 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
-              Check Browse for the full directory, or your Liked places to meet
-              the people who want them too.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <Link href="/places/browse" className="roomly-btn h-11 px-6 text-sm">
-                Browse places
-              </Link>
-              <Link
-                href="/places/saved"
-                className="flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Liked places
+          filteredOut ? (
+            <div className="mt-10 flex flex-1 flex-col items-center justify-center text-center">
+              <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                Nothing matches your search yet.
+              </p>
+              <p className="mt-2 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
+                Your budget or areas are filtering everything out — loosen them a
+                little and the deck fills back up.
+              </p>
+              <Link href="/preferences" className="roomly-btn mt-6 h-11 px-6 text-sm">
+                Adjust my search
               </Link>
             </div>
-          </div>
+          ) : (
+            <div className="mt-10 flex flex-1 flex-col items-center justify-center text-center">
+              <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                You&apos;ve seen every place in your search.
+              </p>
+              <p className="mt-2 max-w-xs text-sm text-zinc-500 dark:text-zinc-400">
+                Widen your search, browse the full directory, or meet the people
+                who want your liked places.
+              </p>
+              <div className="mt-6 flex gap-3">
+                <Link href="/preferences" className="roomly-btn h-11 px-6 text-sm">
+                  Widen search
+                </Link>
+                <Link
+                  href="/places/browse"
+                  className="flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold text-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Browse all
+                </Link>
+              </div>
+            </div>
+          )
         ) : (
           <>
             {/* card-in lives on the scene, not the face — its transform
@@ -237,6 +307,18 @@ export default function PlacesSwipePage() {
                     <p className="text-lg font-black text-brick-600 dark:text-brick-400">
                       {formatRentRange(current.rent_min, current.rent_max)}
                     </p>
+                    {matchedTagLabels(current, prefs.pref_tags).length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {matchedTagLabels(current, prefs.pref_tags).map((label) => (
+                          <span
+                            key={label}
+                            className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          >
+                            ✓ {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-3 text-center text-xs font-medium text-brick-600 dark:text-brick-400">
                       Tap to see details →
                     </p>

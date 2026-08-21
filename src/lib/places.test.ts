@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { formatRentRange, deckOrder, placeKindLabel, type Place } from "./places";
+import {
+  formatRentRange,
+  deckOrder,
+  placeKindLabel,
+  personalizedDeck,
+  hasSearchPrefs,
+  matchedTagLabels,
+  type Place,
+  type SearchPrefs,
+} from "./places";
 
 describe("formatRentRange", () => {
   it("formats a range with an en dash", () => {
@@ -65,5 +74,55 @@ describe("deckOrder", () => {
     const input = [a, b];
     deckOrder(input);
     expect(input).toEqual([a, b]);
+  });
+});
+
+const NO_PREFS: SearchPrefs = { budget_min: null, budget_max: null, pref_areas: null, pref_tags: null };
+
+describe("personalizedDeck", () => {
+  it("passes everything through when no prefs are set", () => {
+    const a = place({ id: "a" });
+    const b = place({ id: "b" });
+    expect(personalizedDeck([a, b], NO_PREFS)).toHaveLength(2);
+  });
+
+  it("filters out places whose rent cannot overlap the budget", () => {
+    const cheap = place({ id: "cheap", rent_min: 700, rent_max: 1000 });
+    const pricey = place({ id: "pricey", rent_min: 2000, rent_max: 2600 });
+    const unknown = place({ id: "unknown" }); // no rent listed: kept
+    const out = personalizedDeck([cheap, pricey, unknown], { ...NO_PREFS, budget_min: 800, budget_max: 1200 });
+    expect(out.map((p) => p.id).sort()).toEqual(["cheap", "unknown"]);
+  });
+
+  it("hard-filters by chosen areas", () => {
+    const hyde = place({ id: "hyde", neighborhood: "Hyde Park" });
+    const zilker = place({ id: "zilker", neighborhood: "Zilker" });
+    const out = personalizedDeck([hyde, zilker], { ...NO_PREFS, pref_areas: ["Hyde Park"] });
+    expect(out.map((p) => p.id)).toEqual(["hyde"]);
+  });
+
+  it("ranks places with more wanted amenities first", () => {
+    const two = place({ id: "two", tags: ["gym", "coffee"] });
+    const none = place({ id: "none", tags: ["nightlife"] });
+    const one = place({ id: "one", tags: ["gym"] });
+    const out = personalizedDeck([none, one, two], { ...NO_PREFS, pref_tags: ["gym", "coffee"] });
+    expect(out.map((p) => p.id)).toEqual(["two", "one", "none"]);
+  });
+});
+
+describe("hasSearchPrefs", () => {
+  it("is false for empty prefs and true once anything is set", () => {
+    expect(hasSearchPrefs(NO_PREFS)).toBe(false);
+    expect(hasSearchPrefs({ ...NO_PREFS, budget_max: 1200 })).toBe(true);
+    expect(hasSearchPrefs({ ...NO_PREFS, pref_areas: ["Zilker"] })).toBe(true);
+    expect(hasSearchPrefs({ ...NO_PREFS, pref_tags: ["gym"] })).toBe(true);
+  });
+});
+
+describe("matchedTagLabels", () => {
+  it("returns labels only for wanted tags the place has", () => {
+    const p = place({ id: "p", tags: ["gym", "quiet", "coffee"] });
+    expect(matchedTagLabels(p, ["gym", "coffee", "parks"])).toEqual(["Gym", "Coffee shops"]);
+    expect(matchedTagLabels(p, null)).toEqual([]);
   });
 });

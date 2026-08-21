@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
-import { LifestyleQuiz, answersToProfileUpdate, type QuizAnswers } from "@/components/LifestyleQuiz";
+import { LifestyleQuiz, type QuizAnswers } from "@/components/LifestyleQuiz";
 
 type Phase = "loading" | "name" | "quiz" | "saving" | "error";
 
@@ -48,14 +48,15 @@ export default function OnboardingPage() {
       .update({
         full_name: name.trim() || null,
         city: city.trim() || null,
-        ...answersToProfileUpdate(finalAnswers),
+        ...finalAnswers,
       })
       .eq("id", uid!);
     if (error) {
       setPhase("error");
       return;
     }
-    router.push("/verify");
+    // Next: rent + areas ("Your search"), then identity verification.
+    router.push("/preferences?next=/verify");
   }
 
   if (phase === "loading") {

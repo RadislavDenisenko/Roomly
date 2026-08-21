@@ -11,8 +11,66 @@ export type Place = {
   website: string | null;
   curated: boolean | null;
   sponsored: boolean | null;
+  tags?: string[] | null;
   created_at?: string;
 };
+
+// Amenity vocabulary ("what's nearby"), shared by the preferences page,
+// the deck's summary bar, and the seed data.
+export const TAG_LABELS: Record<string, string> = {
+  gym: "Gym",
+  groceries: "Groceries",
+  nightlife: "Nightlife",
+  parks: "Parks & trails",
+  transit: "Transit",
+  coffee: "Coffee shops",
+  campus: "Near campus",
+  quiet: "Quiet street",
+  dog_park: "Dog park",
+};
+
+// What the "Your search" step collects (stored on profiles).
+export type SearchPrefs = {
+  budget_min: number | null;
+  budget_max: number | null;
+  pref_areas: string[] | null;
+  pref_tags: string[] | null;
+};
+
+export function hasSearchPrefs(p: SearchPrefs): boolean {
+  return (
+    p.budget_max != null ||
+    (p.pref_areas?.length ?? 0) > 0 ||
+    (p.pref_tags?.length ?? 0) > 0
+  );
+}
+
+// The deck, made personal: hard-filter by budget overlap and chosen areas,
+// then rank by how many wanted amenities a place has (ties fall back to the
+// usual curated-then-newest order). Null/empty prefs filter nothing.
+export function personalizedDeck(places: Place[], prefs: SearchPrefs): Place[] {
+  const filtered = places.filter((p) => {
+    if (prefs.budget_min != null || prefs.budget_max != null) {
+      const overlap =
+        (p.rent_min ?? 0) <= (prefs.budget_max ?? Infinity) &&
+        (p.rent_max ?? Infinity) >= (prefs.budget_min ?? 0);
+      if (!overlap) return false;
+    }
+    if (prefs.pref_areas && prefs.pref_areas.length > 0) {
+      if (!p.neighborhood || !prefs.pref_areas.includes(p.neighborhood)) return false;
+    }
+    return true;
+  });
+  const wanted = new Set(prefs.pref_tags ?? []);
+  const matches = (p: Place) => (p.tags ?? []).filter((t) => wanted.has(t)).length;
+  return deckOrder(filtered).sort((a, b) => matches(b) - matches(a));
+}
+
+// The wanted amenities a place actually has, as labels for its card.
+export function matchedTagLabels(place: Place, prefTags: string[] | null): string[] {
+  const wanted = new Set(prefTags ?? []);
+  return (place.tags ?? []).filter((t) => wanted.has(t)).map((t) => TAG_LABELS[t] ?? t);
+}
 
 // Stock fallback photos for a place with no uploads yet (deterministic by id).
 export function placePhotos(p: Pick<Place, "id" | "photos">): string[] {
