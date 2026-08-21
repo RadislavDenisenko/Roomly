@@ -648,3 +648,69 @@ begin
 end; $$;
 
 grant execute on function public.people_for_area(text, text) to authenticated;
+
+-- Per-visitor demo sessions -------------------------------------------------
+-- The /demo quiz signs up a throwaway demo-<random>@roomly.test account, then
+-- calls this to turn it into a fully seeded demo: verified (so pools open),
+-- hidden from real users' pools, with place likes, two instant matches, and a
+-- first message. Also GCs throwaway demo accounts older than a day (FK
+-- cascades clean up all their rows).
+create or replace function public.start_demo()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  me uuid := auth.uid();
+  my_email text;
+begin
+  if me is null then
+    raise exception 'not signed in';
+  end if;
+  select email into my_email from auth.users where id = me;
+  if my_email not like 'demo-%@roomly.test' then
+    raise exception 'demo sessions only';
+  end if;
+
+  -- opportunistic GC of yesterday's throwaway demo accounts
+  delete from auth.users
+  where email like 'demo-%@roomly.test'
+    and created_at < now() - interval '1 day'
+    and id <> me;
+
+  -- verified so the People pools open; invisible so real users never see
+  -- (or match with) a throwaway demo visitor
+  perform set_config('roomly.allow_verification_write', 'on', true);
+  update public.profiles set
+    full_name = coalesce(full_name, 'Demo Explorer'),
+    city = coalesce(city, 'Austin, TX'),
+    bio = coalesce(bio, 'Just exploring Roomly — throwaway demo profile.'),
+    email_verified = true, phone_verified = true, id_verified = true,
+    verification_status = 'verified', verified_at = now(),
+    people_visible = false
+  where id = me;
+
+  -- like the two places with the busiest seeded pools
+  insert into public.place_reactions (user_id, place_id, reaction)
+  select me, p.id, 'like' from public.places p
+  where p.name in ('The Triangle', 'Hyde Park Commons')
+  on conflict do nothing;
+
+  -- reciprocal likes with two seed users -> the trigger creates matches
+  insert into public.likes (liker_id, liked_id)
+  select me, u.id from auth.users u
+  where u.email in ('seed.alex@roomly.demo', 'seed.zoe@roomly.demo')
+  on conflict do nothing;
+  insert into public.likes (liker_id, liked_id)
+  select u.id, me from auth.users u
+  where u.email in ('seed.alex@roomly.demo', 'seed.zoe@roomly.demo')
+  on conflict do nothing;
+
+  -- a first message so Matches opens with a real conversation
+  insert into public.messages (sender_id, recipient_id, body)
+  select u.id, me,
+         'Hey! Saw we matched and we both liked The Triangle. When are you hoping to move in?'
+  from auth.users u
+  where u.email = 'seed.alex@roomly.demo'
+    and not exists (select 1 from public.messages m
+                    where m.sender_id = u.id and m.recipient_id = me);
+end; $$;
+
+grant execute on function public.start_demo() to authenticated;
