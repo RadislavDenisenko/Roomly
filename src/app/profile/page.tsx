@@ -19,6 +19,12 @@ type Form = {
   smoking: boolean;
   pets: boolean;
   guests: string;
+  weekend_style: string; // "" = unanswered for these six
+  home_noise: string;
+  food_sharing: string;
+  dishes: string;
+  chores: string;
+  overnight_guests: string;
   photos: string[];
   db_nonsmokers_only: boolean;
   db_no_pet_owners: boolean;
@@ -38,6 +44,12 @@ const EMPTY: Form = {
   smoking: false,
   pets: false,
   guests: "sometimes",
+  weekend_style: "",
+  home_noise: "",
+  food_sharing: "",
+  dishes: "",
+  chores: "",
+  overnight_guests: "",
   photos: [],
   db_nonsmokers_only: false,
   db_no_pet_owners: false,
@@ -99,6 +111,12 @@ export default function ProfilePage() {
           smoking: profile.smoking ?? false,
           pets: profile.pets ?? false,
           guests: profile.guests ?? "sometimes",
+          weekend_style: profile.weekend_style ?? "",
+          home_noise: profile.home_noise ?? "",
+          food_sharing: profile.food_sharing ?? "",
+          dishes: profile.dishes ?? "",
+          chores: profile.chores ?? "",
+          overnight_guests: profile.overnight_guests ?? "",
           photos:
             profile.photos && profile.photos.length > 0
               ? profile.photos
@@ -241,6 +259,12 @@ export default function ProfilePage() {
       smoking: form.smoking,
       pets: form.pets,
       guests: form.guests,
+      weekend_style: form.weekend_style || null,
+      home_noise: form.home_noise || null,
+      food_sharing: form.food_sharing || null,
+      dishes: form.dishes || null,
+      chores: form.chores || null,
+      overnight_guests: form.overnight_guests || null,
       avatar_url: form.photos[0] ?? null,
       photos: form.photos,
       db_nonsmokers_only: form.db_nonsmokers_only,
@@ -564,6 +588,85 @@ export default function ProfilePage() {
           <div className="flex gap-6">
             <Toggle label="I smoke" checked={form.smoking} onChange={(v) => update("smoking", v)} />
             <Toggle label="I have pets" checked={form.pets} onChange={(v) => update("pets", v)} />
+          </div>
+        </Card>
+
+        <Card title="The awkward questions (better answered here)">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            The conversations nobody wants to have in person — fridge rules,
+            dishes, sleepovers. Answering these makes your matches much better.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Select
+              label="The fridge rule"
+              value={form.food_sharing}
+              onChange={(v) => update("food_sharing", v)}
+              options={[
+                ["", "—"],
+                ["share", "Shared groceries, shared everything"],
+                ["ask", "Ask first and we're fine"],
+                ["separate", "My shelf, your shelf"],
+              ]}
+            />
+            <Select
+              label="Dirty dishes get washed…"
+              value={form.dishes}
+              onChange={(v) => update("dishes", v)}
+              options={[
+                ["", "—"],
+                ["now", "As I go"],
+                ["same_day", "By the end of the day"],
+                ["soaking", "After a good soak"],
+                ["eventually", "Eventually"],
+              ]}
+            />
+            <Select
+              label="Chores work best as"
+              value={form.chores}
+              onChange={(v) => update("chores", v)}
+              options={[
+                ["", "—"],
+                ["rota", "A schedule that actually works"],
+                ["whoever", "Whoever notices, does it"],
+                ["cleaner", "Splitting a cleaner"],
+                ["eventually", "It gets done… eventually"],
+              ]}
+            />
+            <Select
+              label="Overnight guests"
+              value={form.overnight_guests}
+              onChange={(v) => update("overnight_guests", v)}
+              options={[
+                ["", "—"],
+                ["never", "Rarely — home is my bubble"],
+                ["weekends", "Weekends, sure"],
+                ["often", "A few nights a week"],
+                ["partner", "My partner's here a lot"],
+              ]}
+            />
+            <Select
+              label="Weekends usually look like"
+              value={form.weekend_style}
+              onChange={(v) => update("weekend_style", v)}
+              options={[
+                ["", "—"],
+                ["out", "Out out"],
+                ["host", "People over at ours"],
+                ["home", "Couch and snacks"],
+                ["depends", "Depends on the week"],
+              ]}
+            />
+            <Select
+              label="Music at home"
+              value={form.home_noise}
+              onChange={(v) => update("home_noise", v)}
+              options={[
+                ["", "—"],
+                ["speakers", "Speakers on"],
+                ["headphones", "Headphones mostly"],
+                ["quiet", "I live for quiet"],
+              ]}
+            />
           </div>
         </Card>
 

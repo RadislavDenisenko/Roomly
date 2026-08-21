@@ -48,6 +48,22 @@ alter table public.profiles
   add column if not exists id_verified boolean default false,
   add column if not exists verified_at timestamptz;
 
+-- Lifestyle axes for "the awkward questions" (fridge rules, dishes, chores,
+-- overnight guests, noise, weekends). All optional; scored in src/lib/compat.ts.
+alter table public.profiles
+  add column if not exists weekend_style text
+    check (weekend_style in ('out', 'host', 'home', 'depends')),
+  add column if not exists home_noise text
+    check (home_noise in ('speakers', 'headphones', 'quiet')),
+  add column if not exists food_sharing text
+    check (food_sharing in ('share', 'ask', 'separate')),
+  add column if not exists dishes text
+    check (dishes in ('now', 'same_day', 'soaking', 'eventually')),
+  add column if not exists chores text
+    check (chores in ('rota', 'whoever', 'cleaner', 'eventually')),
+  add column if not exists overnight_guests text
+    check (overnight_guests in ('never', 'weekends', 'often', 'partner'));
+
 alter table public.profiles enable row level security;
 
 drop policy if exists "Authenticated users can view profiles" on public.profiles;
@@ -531,11 +547,14 @@ from public.places p
 where l.place_id is null and p.name = l.title;
 
 -- People pools: the ONLY cross-user window into place_reactions. -----------
-create or replace function public.people_for_place(pid uuid)
+drop function if exists public.people_for_place(uuid); -- return type changed; replace can't
+create function public.people_for_place(pid uuid)
 returns table (
   id uuid, full_name text, age int, city text, bio text, avatar_url text,
   photos text[], budget_min int, budget_max int, cleanliness int,
   sleep_schedule text, smoking boolean, pets boolean, guests text,
+  weekend_style text, home_noise text, food_sharing text, dishes text,
+  chores text, overnight_guests text,
   verification_status text, member_group text
 ) language plpgsql stable security definer set search_path = public as $$
 begin
@@ -553,7 +572,10 @@ begin
   return query
   select p.id, p.full_name, p.age, p.city, p.bio, p.avatar_url, p.photos,
          p.budget_min, p.budget_max, p.cleanliness, p.sleep_schedule,
-         p.smoking, p.pets, p.guests, p.verification_status,
+         p.smoking, p.pets, p.guests,
+         p.weekend_style, p.home_noise, p.food_sharing, p.dishes,
+         p.chores, p.overnight_guests,
+         p.verification_status,
          case when p.place_id = pid and p.looking_for_roommate
               then 'resident' else 'seeker' end as member_group
   from public.profiles p
@@ -574,11 +596,14 @@ end; $$;
 
 grant execute on function public.people_for_place(uuid) to authenticated;
 
-create or replace function public.people_for_area(p_city text, p_neighborhood text)
+drop function if exists public.people_for_area(text, text); -- return type changed; replace can't
+create function public.people_for_area(p_city text, p_neighborhood text)
 returns table (
   id uuid, full_name text, age int, city text, bio text, avatar_url text,
   photos text[], budget_min int, budget_max int, cleanliness int,
   sleep_schedule text, smoking boolean, pets boolean, guests text,
+  weekend_style text, home_noise text, food_sharing text, dishes text,
+  chores text, overnight_guests text,
   verification_status text, member_group text
 ) language plpgsql stable security definer set search_path = public as $$
 begin
@@ -599,7 +624,10 @@ begin
   return query
   select p.id, p.full_name, p.age, p.city, p.bio, p.avatar_url, p.photos,
          p.budget_min, p.budget_max, p.cleanliness, p.sleep_schedule,
-         p.smoking, p.pets, p.guests, p.verification_status,
+         p.smoking, p.pets, p.guests,
+         p.weekend_style, p.home_noise, p.food_sharing, p.dishes,
+         p.chores, p.overnight_guests,
+         p.verification_status,
          'seeker' as member_group
   from public.profiles p
   where p.id <> auth.uid()

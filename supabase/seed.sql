@@ -54,6 +54,33 @@ from (values
 join auth.users u on u.email = d.email
 where p.id = u.id;
 
+-- 3b) "Awkward question" lifestyle answers for every seeded person, matched to
+--     their bios. Keyed by full_name so it works without touching auth.users.
+update public.profiles p set
+  weekend_style = d.weekend, home_noise = d.noise, food_sharing = d.food,
+  dishes = d.dishes, chores = d.chores, overnight_guests = d.overnight
+from (values
+  ('Alex Rivera',   'home',    'headphones', 'ask',      'now',        'rota',       'weekends'),
+  ('Mia Thompson',  'depends', 'quiet',      'share',    'same_day',   'rota',       'weekends'),
+  ('Noah Kim',      'host',    'headphones', 'ask',      'same_day',   'whoever',    'weekends'),
+  ('Ava Martinez',  'host',    'speakers',   'share',    'same_day',   'whoever',    'often'),
+  ('Liam O''Brien', 'host',    'speakers',   'ask',      'soaking',    'whoever',    'often'),
+  ('Sofia Reyes',   'home',    'quiet',      'separate', 'now',        'rota',       'never'),
+  ('Ethan Walker',  'out',     'speakers',   'ask',      'eventually', 'eventually', 'often'),
+  ('Zoe Patel',     'depends', 'headphones', 'share',    'same_day',   'whoever',    'weekends'),
+  ('Lucas Brooks',  'home',    'headphones', 'ask',      'now',        'rota',       'never'),
+  ('Emma Nguyen',   'out',     'speakers',   'ask',      'soaking',    'whoever',    'weekends'),
+  ('Caleb Foster',  'depends', 'headphones', 'separate', 'same_day',   'cleaner',    'never'),
+  ('Harper Lee',    'home',    'quiet',      'separate', 'now',        'rota',       'weekends'),
+  ('Maya Chen',     'host',    'headphones', 'ask',      'same_day',   'whoever',    'weekends'),
+  ('Jordan Pierce', 'home',    'headphones', 'ask',      'now',        'rota',       'weekends'),
+  ('Sam Rivera',    'home',    'quiet',      'separate', 'same_day',   'rota',       'never'),
+  ('Priya Nair',    'depends', 'headphones', 'ask',      'same_day',   'whoever',    'weekends'),
+  ('Diego Alvarez', 'host',    'speakers',   'share',    'soaking',    'whoever',    'often'),
+  ('Riley Brooks',  'depends', 'headphones', 'ask',      'same_day',   'rota',       'weekends')
+) as d(full_name, weekend, noise, food, dishes, chores, overnight)
+where p.full_name = d.full_name;
+
 -- 4) Give the demo account (sample.maya) matches with 3 seed users
 --    (reciprocal likes -> on_like_created trigger creates the match rows).
 insert into public.likes (liker_id, liked_id)

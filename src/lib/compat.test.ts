@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compatibility, reasons, headline, type CompatProfile } from "./compat";
+import { compatibility, reasons, headline, passesDealbreakers, type CompatProfile } from "./compat";
 
 function profile(overrides: Partial<CompatProfile>): CompatProfile {
   return {
@@ -82,9 +82,67 @@ describe("headline", () => {
 });
 
 describe("reasons", () => {
-  it("returns at most 4 reasons", () => {
+  it("returns at most 5 reasons", () => {
     const me = profile({});
     const them = profile({ id: "them" });
-    expect(reasons(me, them).length).toBeLessThanOrEqual(4);
+    expect(reasons(me, them).length).toBeLessThanOrEqual(5);
+  });
+
+  it("surfaces warnings before matches", () => {
+    const me = profile({ smoking: false, dishes: "now" });
+    const them = profile({ id: "them", smoking: true, dishes: "eventually" });
+    const r = reasons(me, them);
+    const firstGood = r.findIndex((x) => x.good);
+    const lastBad = r.map((x) => x.good).lastIndexOf(false);
+    if (firstGood !== -1 && lastBad !== -1) expect(lastBad).toBeLessThan(firstGood);
+  });
+});
+
+describe("awkward-question axes", () => {
+  it("scores identical answers at 100", () => {
+    const me = profile({
+      dishes: "now", food_sharing: "ask", chores: "rota",
+      weekend_style: "home", home_noise: "quiet", overnight_guests: "weekends",
+    });
+    const them = { ...me, id: "them" };
+    expect(compatibility(me, them)).toBe(100);
+  });
+
+  it("is forgiving of adjacent answers (not too strict)", () => {
+    const me = profile({
+      cleanliness: 4, sleep_schedule: "flexible", dishes: "now",
+      food_sharing: "share", chores: "rota", weekend_style: "host",
+      home_noise: "speakers", overnight_guests: "never",
+    });
+    const adjacent = profile({
+      id: "them", cleanliness: 3, sleep_schedule: "early_bird", dishes: "same_day",
+      food_sharing: "ask", chores: "whoever", weekend_style: "out",
+      home_noise: "headphones", overnight_guests: "weekends",
+    });
+    expect(compatibility(me, adjacent)).toBeGreaterThanOrEqual(70);
+  });
+
+  it("punishes big gaps more than small ones", () => {
+    const me = profile({ dishes: "now" });
+    const near = profile({ id: "near", dishes: "same_day" });
+    const far = profile({ id: "far", dishes: "eventually" });
+    expect(compatibility(me, near)).toBeGreaterThan(compatibility(me, far));
+  });
+
+  it("hard-filters dealbreakers regardless of score", () => {
+    const me = { ...profile({}), db_nonsmokers_only: true };
+    expect(passesDealbreakers(me, profile({ id: "s", smoking: true }))).toBe(false);
+    expect(passesDealbreakers(me, profile({ id: "n", smoking: false }))).toBe(true);
+    const noPets = { ...profile({}), db_no_pet_owners: true };
+    expect(passesDealbreakers(noPets, profile({ id: "p", pets: true }))).toBe(false);
+    const budgetOnly = { ...profile({ budget_min: 500, budget_max: 700 }), db_budget_overlap_only: true };
+    expect(passesDealbreakers(budgetOnly, profile({ id: "b", budget_min: 2000, budget_max: 3000 }))).toBe(false);
+  });
+
+  it("treats unanswered questions as neutral, not as zero", () => {
+    const me = profile({ dishes: "now", food_sharing: "share" });
+    const unanswered = profile({ id: "u" }); // all new axes undefined
+    const opposite = profile({ id: "o", dishes: "eventually", food_sharing: "separate" });
+    expect(compatibility(me, unanswered)).toBeGreaterThan(compatibility(me, opposite));
   });
 });

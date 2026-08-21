@@ -11,8 +11,9 @@ together. No scammers, no fake listings — the thing other apps make you pay fo
 is free here.
 
 > **Live demo:** https://roomly-khaki.vercel.app
-> Click **"Try the demo"** on the landing page — it drops you straight into a
-> populated account (no signup needed).
+> Click **"Try the demo"** on the landing page — a 60-second quiz asks you the
+> awkward roommate questions (fridge rules, dishes, sleepovers), then drops you
+> into a populated account with matches ranked by your answers. No signup needed.
 
 ## Why it's different
 
@@ -29,7 +30,7 @@ in the database, not just the UI:
 - **Places first** — swipe a curated Austin directory of real apartments/complexes (plus owner-posted listings), browse and filter, save units.
 - **People pools** — liking a place unlocks who else wants it: co-seekers ranked by compatibility, and residents who already live there and are looking for a roommate. Empty pools fall back to nearby, then city-wide.
 - **Verified-only matching** — a 3-step identity flow (email, phone, ID) and a verified gate over the People pools.
-- **Compatibility scoring** — ranked matches with "why you match" reasons (cleanliness, sleep schedule, smoking, pets, guests, budget overlap, city) plus hard dealbreaker filters.
+- **Compatibility scoring** — ranked matches with "why you match" reasons across the conversations that actually blow up roommate pairs (cleanliness, dishes, sleep schedule, fridge rules, chores, overnight guests, weekends, noise, smoking, pets, budget overlap), weighted by survey evidence and deliberately forgiving of adjacent answers. Plus hard dealbreaker filters.
 - **Matches & messaging** — real match records, message previews, "new match" prompts, tappable icebreakers, and unmatch / block / report safety actions.
 - **Together** — a collaborative shared shortlist for matched roommates hunting for a place as a team.
 - **Multi-photo profiles** and a unified fuchsia→violet design system.

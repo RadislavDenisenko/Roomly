@@ -6,14 +6,16 @@ import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 import { ProfileDetail } from "@/components/ProfileDetail";
 import { mainPhoto } from "@/lib/photos";
 import { isMissingTable } from "@/lib/listings";
-import { compatibility, reasons, budgetsOverlap, type CompatProfile } from "@/lib/compat";
+import {
+  compatibility,
+  reasons,
+  passesDealbreakers,
+  type CompatProfile,
+  type Dealbreakers,
+} from "@/lib/compat";
 import { groupPeopleByPlace, type PoolPerson } from "@/lib/people";
 
-type MyProfile = CompatProfile & {
-  db_nonsmokers_only: boolean | null;
-  db_no_pet_owners: boolean | null;
-  db_budget_overlap_only: boolean | null;
-};
+type MyProfile = CompatProfile & Dealbreakers;
 
 type LikedPlace = { id: string; name: string; city: string | null; neighborhood: string | null };
 type ScoredPerson = PoolPerson & { score: number };
@@ -60,8 +62,9 @@ function scoreColor(s: number) {
   return "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300";
 }
 
-function withScores(people: PoolPerson[], me: CompatProfile): ScoredPerson[] {
+function withScores(people: PoolPerson[], me: MyProfile): ScoredPerson[] {
   return people
+    .filter((p) => passesDealbreakers(me, p))
     .map((p) => ({ ...p, score: compatibility(me, p) }))
     .sort((a, b) => {
       if (a.member_group !== b.member_group) return a.member_group === "resident" ? -1 : 1;
@@ -201,10 +204,7 @@ export default function PeoplePage() {
           if (blocked.has(p.id)) return false;
           if (liked.has(p.id)) return false;
           if (passed.has(p.id)) return false;
-          if (meProfile.db_nonsmokers_only && p.smoking) return false;
-          if (meProfile.db_no_pet_owners && p.pets) return false;
-          if (meProfile.db_budget_overlap_only && !budgetsOverlap(meProfile, p)) return false;
-          return true;
+          return passesDealbreakers(meProfile, p);
         });
         const scored = filtered
           .map((p) => ({ ...p, member_group: "seeker" as const, score: compatibility(meProfile, p) }))

@@ -97,7 +97,7 @@ export default function LoginPage() {
           </div>
           <DemoButton className="roomly-btn mt-4 h-11 w-full text-sm" />
           <p className="mt-2 text-center text-xs text-zinc-400">
-            Explore as a sample user — no signup needed.
+            Answer a few quick questions and explore — no signup needed.
           </p>
 
           <p className="mt-4 text-center text-sm text-zinc-500 dark:text-zinc-400">

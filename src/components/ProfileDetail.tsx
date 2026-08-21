@@ -5,6 +5,14 @@ import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { galleryPhotos } from "@/lib/photos";
 import type { VerificationStatus } from "@/lib/verification";
 import { isVerified } from "@/lib/verification";
+import {
+  weekendLabel,
+  noiseLabel,
+  foodLabel,
+  dishesLabel,
+  choresLabel,
+  overnightLabel,
+} from "@/lib/compat";
 
 export type ProfileFull = {
   id: string;
@@ -21,6 +29,12 @@ export type ProfileFull = {
   smoking: boolean | null;
   pets: boolean | null;
   guests: string | null;
+  weekend_style?: string | null;
+  home_noise?: string | null;
+  food_sharing?: string | null;
+  dishes?: string | null;
+  chores?: string | null;
+  overnight_guests?: string | null;
   move_in_date?: string | null;
   email_verified: boolean | null;
   verification_status?: VerificationStatus | null;
@@ -219,6 +233,12 @@ export function ProfileDetail({
             <div className="mt-2 flex flex-wrap gap-2">
               {profile.cleanliness ? <Chip>🧹 {cleanLabel[profile.cleanliness]}</Chip> : null}
               {profile.sleep_schedule ? <Chip>{sleepLabel[profile.sleep_schedule]}</Chip> : null}
+              {profile.dishes ? <Chip>🍽️ {dishesLabel[profile.dishes]}</Chip> : null}
+              {profile.food_sharing ? <Chip>🧺 {foodLabel[profile.food_sharing]}</Chip> : null}
+              {profile.chores ? <Chip>🧻 {choresLabel[profile.chores]}</Chip> : null}
+              {profile.overnight_guests ? <Chip>🛏️ {overnightLabel[profile.overnight_guests]}</Chip> : null}
+              {profile.weekend_style ? <Chip>🎉 {weekendLabel[profile.weekend_style]}</Chip> : null}
+              {profile.home_noise ? <Chip>🎧 {noiseLabel[profile.home_noise]}</Chip> : null}
               {profile.guests ? <Chip>{guestsLabel[profile.guests]}</Chip> : null}
               <Chip>{profile.smoking ? "🚬 Smoker" : "🚭 Non-smoker"}</Chip>
               <Chip>{profile.pets ? "🐾 Has pets" : "🚫 No pets"}</Chip>
