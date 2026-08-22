@@ -50,10 +50,21 @@ export default function ConversationPage() {
     [otherId],
   );
 
+  // Opening (or receiving in) this chat marks it read for the unread badges.
+  const markRead = useCallback(
+    async (supabase: ReturnType<typeof createClient>, myId: string) => {
+      await supabase
+        .from("chat_reads")
+        .upsert({ user_id: myId, peer_id: otherId, last_read_at: new Date().toISOString() });
+    },
+    [otherId],
+  );
+
   useEffect(() => {
     if (!supabaseConfigured) return;
     const supabase = createClient();
-    let timer: ReturnType<typeof setInterval> | undefined;
+    let poll: ReturnType<typeof setInterval> | undefined;
+    let channel: ReturnType<typeof supabase.channel> | undefined;
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) {
@@ -71,12 +82,33 @@ export default function ConversationPage() {
       setOther((prof as Profile) ?? null);
       await load(supabase, myId);
       setLoading(false);
-      timer = setInterval(() => load(supabase, myId), 3000);
+      void markRead(supabase, myId);
+
+      // Live messages via Realtime; RLS scopes the stream to rows I can read.
+      channel = supabase
+        .channel(`chat-${otherId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${myId}` },
+          (payload) => {
+            const m = payload.new as Msg;
+            if (m.sender_id !== otherId) return;
+            setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+            void markRead(supabase, myId);
+          },
+        )
+        .subscribe((status) => {
+          // Installs without the realtime publication still work: fall back to polling.
+          if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && !poll) {
+            poll = setInterval(() => load(supabase, myId), 5000);
+          }
+        });
     })();
     return () => {
-      if (timer) clearInterval(timer);
+      if (poll) clearInterval(poll);
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [otherId, load]);
+  }, [otherId, load, markRead]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,14 +121,17 @@ export default function ConversationPage() {
     setText("");
     setSendError(null);
     const supabase = createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("messages")
-      .insert({ sender_id: me, recipient_id: otherId, body });
-    if (error) {
+      .insert({ sender_id: me, recipient_id: otherId, body })
+      .select()
+      .single();
+    if (error || !data) {
       setSendError("Could not send — you can only message people you have matched with.");
       return;
     }
-    await load(supabase, me);
+    const sent = data as Msg;
+    setMessages((prev) => (prev.some((x) => x.id === sent.id) ? prev : [...prev, sent]));
   }
 
   async function unmatch() {

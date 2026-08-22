@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { UserCircleIcon } from "@phosphor-icons/react";
+import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 
 const STEPS = [
   { key: "places", href: "/places", n: 1, label: "Places" },
@@ -16,6 +18,17 @@ export type Step = (typeof STEPS)[number]["key"];
  * wants you to move: match a place, meet its people, talk to your matches.
  */
 export function AppNav({ active }: { active: Step }) {
+  // Conversations needing attention (unread messages or unopened matches).
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      supabase.rpc("unread_chats").then(({ data: n }) => setUnread((n as number) ?? 0));
+    });
+  }, []);
+
   return (
     <header className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-6 py-5">
       <Link href="/" aria-label="Roomly home" className="shrink-0">
@@ -51,6 +64,16 @@ export function AppNav({ active }: { active: Step }) {
                   {s.n}
                 </span>
                 {s.label}
+                {s.key === "matches" && unread > 0 && (
+                  <span
+                    aria-label={`${unread} conversations need you`}
+                    className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold ${
+                      isActive ? "bg-white text-brick-700" : "bg-brick-600 text-white"
+                    }`}
+                  >
+                    {unread}
+                  </span>
+                )}
               </Link>
             </span>
           );

@@ -9,6 +9,7 @@ import { isVerified } from "@/lib/verification";
 import { ProfileDetail, type ProfileFull } from "@/components/ProfileDetail";
 import { mainPhoto } from "@/lib/photos";
 import { relativeTime } from "@/lib/format";
+import { unreadByPeer, type ChatRead } from "@/lib/chat";
 
 type Profile = ProfileFull;
 
@@ -17,7 +18,9 @@ export default function MatchesPage() {
   // synchronous setLoading(false) in the effect when accounts aren't connected.
   const [loading, setLoading] = useState(supabaseConfigured);
   const [authed, setAuthed] = useState(false);
-  const [rows, setRows] = useState<{ profile: Profile; last: { body: string; created_at: string } | null }[]>([]);
+  const [rows, setRows] = useState<
+    { profile: Profile; last: { body: string; created_at: string } | null; unread: number }[]
+  >([]);
   const [detail, setDetail] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -44,16 +47,24 @@ export default function MatchesPage() {
         .select("sender_id, recipient_id, body, created_at")
         .or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)
         .order("created_at", { ascending: false });
+      const { data: readRows } = await supabase
+        .from("chat_reads")
+        .select("peer_id, last_read_at")
+        .eq("user_id", uid);
 
+      const messageMeta = (msgs ?? []) as { sender_id: string; recipient_id: string; body: string; created_at: string }[];
       const lastByOther = new Map<string, { body: string; created_at: string }>();
-      for (const m of (msgs ?? []) as { sender_id: string; recipient_id: string; body: string; created_at: string }[]) {
+      for (const m of messageMeta) {
         const other = m.sender_id === uid ? m.recipient_id : m.sender_id;
         if (!lastByOther.has(other)) lastByOther.set(other, { body: m.body, created_at: m.created_at });
       }
+      const unread = unreadByPeer(messageMeta, (readRows ?? []) as ChatRead[], uid);
 
       const decorated = ((profs ?? []) as Profile[])
-        .map((p) => ({ profile: p, last: lastByOther.get(p.id) ?? null }))
+        .map((p) => ({ profile: p, last: lastByOther.get(p.id) ?? null, unread: unread[p.id] ?? 0 }))
         .sort((a, b) => {
+          // Conversations that need you float to the top, then by recency.
+          if ((a.unread > 0) !== (b.unread > 0)) return a.unread > 0 ? -1 : 1;
           const at = a.last?.created_at ?? matchData.find((r) => r.user_a === a.profile.id || r.user_b === a.profile.id)?.created_at ?? "";
           const bt = b.last?.created_at ?? matchData.find((r) => r.user_a === b.profile.id || r.user_b === b.profile.id)?.created_at ?? "";
           return bt.localeCompare(at);
@@ -93,7 +104,7 @@ export default function MatchesPage() {
           </div>
         ) : (
           <ul className="mt-6 space-y-3">
-            {rows.map(({ profile: m, last }, i) => (
+            {rows.map(({ profile: m, last, unread }, i) => (
               <li
                 key={m.id}
                 style={{ animationDelay: `${i * 60}ms` }}
@@ -110,14 +121,25 @@ export default function MatchesPage() {
                       {isVerified(m) && <VerifiedBadge />}
                     </div>
                     {last ? (
-                      <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                        {last.body} · <span className="text-zinc-400">{relativeTime(last.created_at)}</span>
+                      <p
+                        className={`truncate text-sm ${
+                          unread > 0
+                            ? "font-semibold text-zinc-900 dark:text-zinc-100"
+                            : "text-zinc-500 dark:text-zinc-400"
+                        }`}
+                      >
+                        {last.body} · <span className="font-normal text-zinc-400">{relativeTime(last.created_at)}</span>
                       </p>
                     ) : (
                       <span className="mt-0.5 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">New match</span>
                     )}
                   </div>
                 </button>
+                {unread > 0 && (
+                  <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-brick-600 px-1.5 text-xs font-bold text-white">
+                    {unread}
+                  </span>
+                )}
                 <Link href={`/messages/${m.id}`} className="roomly-btn shrink-0 px-4 py-2 text-sm">Message</Link>
               </li>
             ))}

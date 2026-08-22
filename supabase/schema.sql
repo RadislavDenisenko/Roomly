@@ -200,6 +200,35 @@ drop policy if exists "See your own messages" on public.messages;
 create policy "See your own messages" on public.messages
   for select using (auth.uid() = sender_id or auth.uid() = recipient_id);
 
+-- Read-state per conversation: one row per (reader, peer), bumped when the
+-- reader opens the chat. Unread = anything from that peer newer than the row.
+create table if not exists public.chat_reads (
+  user_id uuid not null references auth.users on delete cascade,
+  peer_id uuid not null references auth.users on delete cascade,
+  last_read_at timestamptz not null default now(),
+  primary key (user_id, peer_id)
+);
+alter table public.chat_reads enable row level security;
+
+drop policy if exists "Own chat reads" on public.chat_reads;
+create policy "Own chat reads" on public.chat_reads
+  for select using (auth.uid() = user_id);
+drop policy if exists "Set own chat reads" on public.chat_reads;
+create policy "Set own chat reads" on public.chat_reads
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "Update own chat reads" on public.chat_reads;
+create policy "Update own chat reads" on public.chat_reads
+  for update using (auth.uid() = user_id);
+
+-- Stream new messages to subscribed clients (RLS still applies per subscriber).
+do $$ begin
+  if not exists (select 1 from pg_publication_tables
+                 where pubname = 'supabase_realtime'
+                   and schemaname = 'public' and tablename = 'messages') then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
+
 -- Matches: one row per pair (ordered), written by trigger on reciprocal like.
 create table if not exists public.matches (
   id uuid primary key default gen_random_uuid(),
@@ -656,6 +685,27 @@ begin
 end; $$;
 
 grant execute on function public.people_for_area(text, text) to authenticated;
+
+-- How many conversations need my attention: peers with messages newer than my
+-- read marker, plus fresh matches I haven't opened yet. Runs as the caller, so
+-- RLS scopes everything to their own rows.
+create or replace function public.unread_chats()
+returns integer language sql stable as $$
+  select count(distinct x.peer)::int from (
+    select m.sender_id as peer, max(m.created_at) as t
+      from public.messages m
+      where m.recipient_id = auth.uid()
+      group by m.sender_id
+    union all
+    select case when ma.user_a = auth.uid() then ma.user_b else ma.user_a end, ma.created_at
+      from public.matches ma
+      where ma.status = 'active' and auth.uid() in (ma.user_a, ma.user_b)
+  ) x
+  where x.t > coalesce((select r.last_read_at from public.chat_reads r
+                        where r.user_id = auth.uid() and r.peer_id = x.peer),
+                       '-infinity'::timestamptz);
+$$;
+grant execute on function public.unread_chats() to authenticated;
 
 -- Per-visitor demo sessions -------------------------------------------------
 -- The /demo quiz signs up a throwaway demo-<random>@roomly.test account, then
