@@ -707,6 +707,127 @@ returns integer language sql stable as $$
 $$;
 grant execute on function public.unread_chats() to authenticated;
 
+-- Email notifications --------------------------------------------------------
+-- New message / new match -> Resend, straight from Postgres via pg_net (async,
+-- never blocks the insert). Requires the API key in private.secrets — insert
+-- it once, directly in the SQL editor (NEVER commit it):
+--   insert into private.secrets (name, value) values ('resend_api_key', 're_...')
+--   on conflict (name) do update set value = excluded.value;
+create extension if not exists pg_net;
+
+create schema if not exists private;
+create table if not exists private.secrets (
+  name text primary key,
+  value text not null
+);
+
+create or replace function private.escape_html(t text)
+returns text language sql immutable as $$
+  select replace(replace(replace(coalesce(t, ''), '&', '&amp;'), '<', '&lt;'), '>', '&gt;');
+$$;
+
+-- Demo/seed accounts have fake domains; never try to email them.
+create or replace function private.email_ok(addr text)
+returns boolean language sql immutable as $$
+  select addr is not null
+     and addr not like '%@roomly.test'
+     and addr not like '%@roomly.demo';
+$$;
+
+create or replace function private.send_notification_email(to_email text, subject text, html text)
+returns void language plpgsql security definer set search_path = private, public as $$
+declare
+  api_key text;
+begin
+  select value into api_key from private.secrets where name = 'resend_api_key';
+  if api_key is null then return; end if;
+  perform net.http_post(
+    url := 'https://api.resend.com/emails',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || api_key,
+      'Content-Type', 'application/json'
+    ),
+    body := jsonb_build_object(
+      'from', 'Roomly <onboarding@resend.dev>',
+      'to', jsonb_build_array(to_email),
+      'subject', subject,
+      'html', html
+    )
+  );
+end; $$;
+
+-- New message -> email the recipient, but only for the FIRST unread message
+-- in that conversation (no email stacking while they stay away).
+create or replace function public.notify_message()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+declare
+  to_email text;
+  sender_name text;
+begin
+  select u.email into to_email from auth.users u where u.id = new.recipient_id;
+  if not private.email_ok(to_email) then return new; end if;
+  if exists (
+    select 1 from public.messages m
+    where m.sender_id = new.sender_id and m.recipient_id = new.recipient_id
+      and m.id <> new.id
+      and m.created_at > coalesce((select r.last_read_at from public.chat_reads r
+                                   where r.user_id = new.recipient_id and r.peer_id = new.sender_id),
+                                  '-infinity'::timestamptz)
+  ) then
+    return new;
+  end if;
+  select coalesce(p.full_name, 'Your match') into sender_name
+  from public.profiles p where p.id = new.sender_id;
+  perform private.send_notification_email(
+    to_email,
+    sender_name || ' sent you a message on Roomly',
+    '<p><b>' || private.escape_html(sender_name) || ':</b> '
+      || private.escape_html(left(new.body, 140)) || '</p>'
+      || '<p><a href="https://roomly-khaki.vercel.app/messages/' || new.sender_id
+      || '">Reply on Roomly</a></p>'
+  );
+  return new;
+end; $$;
+
+drop trigger if exists on_message_notify on public.messages;
+create trigger on_message_notify
+  after insert on public.messages
+  for each row execute procedure public.notify_message();
+
+-- New match -> email both sides.
+create or replace function public.notify_match()
+returns trigger language plpgsql security definer set search_path = public, private as $$
+declare
+  a_email text; b_email text; a_name text; b_name text;
+begin
+  select u.email into a_email from auth.users u where u.id = new.user_a;
+  select u.email into b_email from auth.users u where u.id = new.user_b;
+  select coalesce(p.full_name, 'Someone') into a_name from public.profiles p where p.id = new.user_a;
+  select coalesce(p.full_name, 'Someone') into b_name from public.profiles p where p.id = new.user_b;
+  if private.email_ok(a_email) then
+    perform private.send_notification_email(
+      a_email,
+      'It''s a match — you and ' || b_name || ' liked each other',
+      '<p>You and <b>' || private.escape_html(b_name) || '</b> liked each other on Roomly.</p>'
+        || '<p><a href="https://roomly-khaki.vercel.app/matches">Start the conversation</a></p>'
+    );
+  end if;
+  if private.email_ok(b_email) then
+    perform private.send_notification_email(
+      b_email,
+      'It''s a match — you and ' || a_name || ' liked each other',
+      '<p>You and <b>' || private.escape_html(a_name) || '</b> liked each other on Roomly.</p>'
+        || '<p><a href="https://roomly-khaki.vercel.app/matches">Start the conversation</a></p>'
+    );
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists on_match_notify on public.matches;
+create trigger on_match_notify
+  after insert on public.matches
+  for each row execute procedure public.notify_match();
+
 -- Per-visitor demo sessions -------------------------------------------------
 -- The /demo quiz signs up a throwaway demo-<random>@roomly.test account, then
 -- calls this to turn it into a fully seeded demo: verified (so pools open),
